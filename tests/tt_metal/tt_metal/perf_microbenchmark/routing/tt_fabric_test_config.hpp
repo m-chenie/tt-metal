@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: © 2025 Tenstorrent Inc.
+// SPDX-FileCopyrightText: © 2025 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -14,7 +14,7 @@
 #include <algorithm>
 #include <numeric>
 
-#include "assert.hpp"
+#include <tt_stl/assert.hpp>
 #include <tt-logger/tt-logger.hpp>
 
 #include "impl/context/metal_context.hpp"
@@ -29,6 +29,7 @@
 
 #include "tt_fabric_test_interfaces.hpp"
 #include "tt_fabric_test_common_types.hpp"
+#include <tt-metalium/hal.hpp>
 
 namespace tt::tt_fabric {
 namespace fabric_tests {
@@ -129,7 +130,7 @@ static const StringEnumMapper<HighLevelTrafficPattern> high_level_traffic_patter
 });
 // Optimized string concatenation utility to avoid multiple allocations
 template <typename... Args>
-inline void append_with_separator(std::string& target, std::string_view separator, Args&&... args) {
+void append_with_separator(std::string& target, std::string_view separator, const Args&... args) {
     // Calculate total size needed
     size_t total_size = target.size();
     auto add_size = [&total_size, &separator](const auto& arg) {
@@ -173,9 +174,9 @@ inline FabricNodeId resolve_device_identifier(const DeviceIdentifier& device_id,
             using T = std::decay_t<decltype(id)>;
             if constexpr (std::is_same_v<T, FabricNodeId>) {
                 return id;  // Already resolved
-            } else if constexpr (std::is_same_v<T, chip_id_t>) {
+            } else if constexpr (std::is_same_v<T, ChipId>) {
                 return provider.get_fabric_node_id(id);
-            } else if constexpr (std::is_same_v<T, std::pair<MeshId, chip_id_t>>) {
+            } else if constexpr (std::is_same_v<T, std::pair<MeshId, ChipId>>) {
                 return FabricNodeId{id.first, id.second};
             } else if constexpr (std::is_same_v<T, std::pair<MeshId, MeshCoordinate>>) {
                 return provider.get_fabric_node_id(id.first, id.second);
@@ -201,7 +202,6 @@ inline TrafficPatternType merge_patterns(const TrafficPatternType& base, const T
     merged.size = specific.size.has_value() ? specific.size : base.size;
     merged.num_packets = specific.num_packets.has_value() ? specific.num_packets : base.num_packets;
     merged.atomic_inc_val = specific.atomic_inc_val.has_value() ? specific.atomic_inc_val : base.atomic_inc_val;
-    merged.atomic_inc_wrap = specific.atomic_inc_wrap.has_value() ? specific.atomic_inc_wrap : base.atomic_inc_wrap;
     merged.mcast_start_hops = specific.mcast_start_hops.has_value() ? specific.mcast_start_hops : base.mcast_start_hops;
 
     // Special handling for nested destination
@@ -285,12 +285,16 @@ public:
     std::optional<std::string> get_yaml_config_path();
     bool check_filter(ParsedTestConfig& test_config, bool fine_grained);
     void apply_overrides(std::vector<ParsedTestConfig>& test_configs);
-    std::vector<ParsedTestConfig> generate_default_configs();
     std::optional<uint32_t> get_master_seed();
     bool dump_built_tests();
     std::string get_built_tests_dump_file_name(const std::string& default_file_name);
     bool has_help_option();
     void print_help();
+
+    // Progress monitoring options
+    bool show_progress();
+    uint32_t get_progress_interval();
+    uint32_t get_hung_threshold();
 
 private:
     const std::vector<std::string>& input_args_;
@@ -298,7 +302,7 @@ private:
     std::optional<std::string> filter_value;
 };
 
-const std::string no_default_test_yaml_config = "";
+const std::string no_default_test_yaml_config;
 
 template <typename T>
 inline T YamlConfigParser::parse_scalar(const YAML::Node& yaml_node) {
@@ -350,9 +354,9 @@ inline std::vector<std::vector<T>> YamlConfigParser::parse_2d_array(const YAML::
         row_vector.reserve(row.size());
         for (const auto& entry : row) {
             // only deals with ethernet core case
-            if constexpr (std::is_same_v<T, eth_coord_t>) {
+            if constexpr (std::is_same_v<T, EthCoord>) {
                 TT_FATAL(entry.size() == 5, "Expected ethernet core coordinates to be a sequence of 5 elements");
-                row_vector.push_back(eth_coord_t{
+                row_vector.push_back(EthCoord{
                     parse_scalar<uint32_t>(entry[0]),
                     parse_scalar<uint32_t>(entry[1]),
                     parse_scalar<uint32_t>(entry[2]),
@@ -374,7 +378,6 @@ inline std::vector<T> YamlConfigParser::get_elements_in_range(T start, T end) {
     std::iota(range.begin(), range.end(), start);
     return range;
 }
-
 
 class TestConfigBuilder {
 public:
@@ -404,12 +407,47 @@ public:
 
         return built_tests;
     }
+    // Helper function to check if a test should be skipped based on:
+    // 1. topology and device count
+    // 2. architecture or cluster type
+    bool should_skip_test(const ParsedTestConfig& test_config) const {
+        // Skip if the test declares platforms to skip and this platform matches
+        if (test_config.skip.has_value()) {
+            // Determine current platform identifiers
+            auto arch_name = tt::tt_metal::hal::get_arch_name();
+            auto cluster_type = tt::tt_metal::MetalContext::instance().get_cluster().get_cluster_type();
+            std::string cluster_name = std::string(enchantum::to_string(cluster_type));
+            for (const auto& token : test_config.skip.value()) {
+                if (token == arch_name || token == cluster_name) {
+                    log_info(LogTest, "Skipping test '{}' on architecture or platform '{}'", test_config.name, token);
+                    return true;
+                }
+            }
+        }
+        if (test_config.fabric_setup.topology == Topology::Ring) {
+            uint32_t num_devices = device_info_provider_.get_local_node_ids().size();
+            if (num_devices < MIN_RING_TOPOLOGY_DEVICES) {
+                log_info(
+                    LogTest,
+                    "Skipping test '{}' - Ring topology requires at least {} devices, but only {} devices available",
+                    test_config.name,
+                    MIN_RING_TOPOLOGY_DEVICES,
+                    num_devices);
+                return true;
+            }
+        }
+        return false;
+    }
 
 private:
+    static constexpr uint32_t MIN_RING_TOPOLOGY_DEVICES = 4;
+
     // Convert ParsedTestConfig to TestConfig by resolving device identifiers
-    TestConfig resolve_test_config(const ParsedTestConfig& parsed_test) {
+    TestConfig resolve_test_config(const ParsedTestConfig& parsed_test, uint32_t iteration_number) {
         TestConfig resolved_test;
         resolved_test.name = parsed_test.name;
+        resolved_test.parametrized_name = parsed_test.parametrized_name;
+        resolved_test.iteration_number = iteration_number;
         resolved_test.fabric_setup = parsed_test.fabric_setup;
         resolved_test.on_missing_param_policy = parsed_test.on_missing_param_policy;
         resolved_test.parametrization_params = parsed_test.parametrization_params;
@@ -420,6 +458,7 @@ private:
         resolved_test.benchmark_mode = parsed_test.benchmark_mode;
         resolved_test.global_sync = parsed_test.global_sync;
         resolved_test.global_sync_val = parsed_test.global_sync_val;
+        resolved_test.enable_flow_control = parsed_test.enable_flow_control;
 
         // Resolve defaults
         if (parsed_test.defaults.has_value()) {
@@ -439,7 +478,7 @@ private:
         SenderConfig resolved_sender;
         resolved_sender.device = resolve_device_identifier(parsed_sender.device, device_info_provider_);
         resolved_sender.core = parsed_sender.core;
-        resolved_sender.link_id = parsed_sender.link_id;  // Transfer link ID
+        resolved_sender.link_id = parsed_sender.link_id.value_or(0);  // Default to link 0 if not specified
 
         resolved_sender.patterns.reserve(parsed_sender.patterns.size());
         for (const auto& parsed_pattern : parsed_sender.patterns) {
@@ -456,12 +495,15 @@ private:
         resolved_pattern.size = parsed_pattern.size;
         resolved_pattern.num_packets = parsed_pattern.num_packets;
         resolved_pattern.atomic_inc_val = parsed_pattern.atomic_inc_val;
-        resolved_pattern.atomic_inc_wrap = parsed_pattern.atomic_inc_wrap;
         resolved_pattern.mcast_start_hops = parsed_pattern.mcast_start_hops;
 
         if (parsed_pattern.destination.has_value()) {
             resolved_pattern.destination = resolve_destination_config(parsed_pattern.destination.value());
         }
+
+        // Credit info fields (will be populated by GlobalAllocator during resource allocation)
+        resolved_pattern.sender_credit_info = std::nullopt;
+        resolved_pattern.credit_return_batch_size = std::nullopt;
 
         return resolved_pattern;
     }
@@ -489,6 +531,14 @@ private:
             for (const auto& p : p_config.patterns.value()) {
                 if (p.iterations.has_value()) {
                     max_iterations = std::max(max_iterations, p.iterations.value());
+                    // Edge Case: If both iterations and all_to_one are supplied, iterations will override the number of
+                    // iterations set by all_to_one
+                    if (p.type == "all_to_one") {
+                        log_warning(
+                            tt::LogTest,
+                            "'iterations' specified alongside 'all_to_one' test, `iterations` will be followed instead "
+                            "of auto-generating iterations based on number of devices");
+                    }
                 } else if (p.type == "all_to_one") {
                     // Dynamically calculate iterations for all_to_one patterns based on number of devices
                     uint32_t num_devices = static_cast<uint32_t>(device_info_provider_.get_global_node_ids().size());
@@ -516,9 +566,13 @@ private:
             ParsedTestConfig iteration_test = p_config;
             iteration_test.patterns.reset();  // Will be expanded into concrete senders.
 
+            // Initialize parametrized_name with original name if empty
+            if (iteration_test.parametrized_name.empty()) {
+                iteration_test.parametrized_name = iteration_test.name;
+            }
             if (max_iterations > 1) {
-                // Use optimized string concatenation utility
-                detail::append_with_separator(iteration_test.name, "_", "iter", i);
+                // Use optimized string concatenation utility for parametrized name
+                detail::append_with_separator(iteration_test.parametrized_name, "_", "iter", i);
             }
 
             iteration_test.seed = std::uniform_int_distribution<uint32_t>()(this->gen_);
@@ -559,7 +613,7 @@ private:
             split_all_unicast_or_multicast_patterns(iteration_test);
 
             // Convert to resolved TestConfig
-            TestConfig resolved_test = resolve_test_config(iteration_test);
+            TestConfig resolved_test = resolve_test_config(iteration_test, i);
 
             validate_test(resolved_test);
             expanded_tests.push_back(resolved_test);
@@ -596,6 +650,13 @@ private:
                             // Explicitly preserve benchmark_mode
                             next_config.benchmark_mode = current_config.benchmark_mode;
 
+                            // Initialize parametrized_name with original name if empty
+                            if (next_config.parametrized_name.empty()) {
+                                next_config.parametrized_name = next_config.name;
+                            }
+                            // Update parametrized name to include parameter name and value
+                            detail::append_with_separator(next_config.parametrized_name, "_", param_name, value);
+
                             ParsedTrafficPatternConfig param_default;
                             if (param_name == "ftype") {
                                 param_default.ftype = detail::chip_send_type_mapper.from_string(value, "ftype");
@@ -614,6 +675,14 @@ private:
                             auto& next_config = next_level_configs.back();
                             // Explicitly preserve benchmark_mode
                             next_config.benchmark_mode = current_config.benchmark_mode;
+
+                            // Initialize parametrized_name with original name if empty
+                            if (next_config.parametrized_name.empty()) {
+                                next_config.parametrized_name = next_config.name;
+                            }
+                            // Update parametrized name to include parameter name and value
+                            detail::append_with_separator(
+                                next_config.parametrized_name, "_", param_name, std::to_string(value));
 
                             if (param_name == "num_links") {
                                 // num_links is part of fabric_setup, not traffic pattern defaults
@@ -659,10 +728,6 @@ private:
             TT_FATAL(
                 !pattern.atomic_inc_val.has_value(),
                 "Test '{}': 'atomic_inc_val' should not be specified for 'unicast_write' ntype.",
-                test.name);
-            TT_FATAL(
-                !pattern.atomic_inc_wrap.has_value(),
-                "Test '{}': 'atomic_inc_wrap' should not be specified for 'unicast_write' ntype.",
                 test.name);
         }
 
@@ -824,8 +889,11 @@ private:
 
     void expand_one_or_all_to_all_unicast(
         ParsedTestConfig& test, const ParsedTrafficPatternConfig& base_pattern, HighLevelTrafficPattern pattern_type) {
-        const char* pattern_name = (pattern_type == HighLevelTrafficPattern::OneToAll) ? "one_to_all" : "all_to_all";
-        log_info(LogTest, "Expanding {}_unicast pattern for test: {}", pattern_name, test.name);
+        log_debug(
+            LogTest,
+            "Expanding {}_unicast pattern for test: {}",
+            (pattern_type == HighLevelTrafficPattern::OneToAll) ? "one_to_all" : "all_to_all",
+            test.name);
         std::vector<std::pair<FabricNodeId, FabricNodeId>> all_pairs =
             this->route_manager_.get_all_to_all_unicast_pairs();
 
@@ -850,7 +918,8 @@ private:
 
     void expand_all_to_one_unicast(
         ParsedTestConfig& test, const ParsedTrafficPatternConfig& base_pattern, uint32_t iteration_idx) {
-        log_info(LogTest, "Expanding all_to_one_unicast pattern for test: {} (iteration {})", test.name, iteration_idx);
+        log_debug(
+            LogTest, "Expanding all_to_one_unicast pattern for test: {} (iteration {})", test.name, iteration_idx);
         auto filtered_pairs = this->route_manager_.get_all_to_one_unicast_pairs(iteration_idx);
         if (!filtered_pairs.empty()) {
             add_senders_from_pairs(test, filtered_pairs, base_pattern);
@@ -858,21 +927,21 @@ private:
     }
 
     void expand_all_to_one_random_unicast(ParsedTestConfig& test, const ParsedTrafficPatternConfig& base_pattern) {
-        log_info(LogTest, "Expanding all_to_one_unicast pattern for test: {}", test.name);
+        log_debug(LogTest, "Expanding all_to_one_unicast pattern for test: {}", test.name);
         uint32_t index = get_random_in_range(0, device_info_provider_.get_global_node_ids().size() - 1);
         auto filtered_pairs = this->route_manager_.get_all_to_one_unicast_pairs(index);
         add_senders_from_pairs(test, filtered_pairs, base_pattern);
     }
 
     void expand_full_device_random_pairing(ParsedTestConfig& test, const ParsedTrafficPatternConfig& base_pattern) {
-        log_info(LogTest, "Expanding full_device_random_pairing pattern for test: {}", test.name);
+        log_debug(LogTest, "Expanding full_device_random_pairing pattern for test: {}", test.name);
         auto random_pairs = this->route_manager_.get_full_device_random_pairs(this->gen_);
         add_senders_from_pairs(test, random_pairs, base_pattern);
     }
 
     void expand_all_devices_uniform_pattern(ParsedTestConfig& test, const ParsedTrafficPatternConfig& base_pattern) {
-        log_info(LogTest, "Expanding all_devices_uniform_pattern for test: {}", test.name);
-        std::vector<FabricNodeId> devices = device_info_provider_.get_local_node_ids();
+        log_debug(LogTest, "Expanding all_devices_uniform_pattern for test: {}", test.name);
+        std::vector<FabricNodeId> devices = device_info_provider_.get_global_node_ids();
         TT_FATAL(!devices.empty(), "Cannot expand all_devices_uniform_pattern because no devices were found.");
 
         for (const auto& src_node : devices) {
@@ -884,8 +953,8 @@ private:
     void expand_one_or_all_to_all_multicast(
         ParsedTestConfig& test, const ParsedTrafficPatternConfig& base_pattern, HighLevelTrafficPattern pattern_type) {
         const char* pattern_name = (pattern_type == HighLevelTrafficPattern::OneToAll) ? "one_to_all" : "all_to_all";
-        log_info(LogTest, "Expanding {}_multicast pattern for test: {}", pattern_name, test.name);
-        std::vector<FabricNodeId> devices = device_info_provider_.get_local_node_ids();
+        log_debug(LogTest, "Expanding {}_multicast pattern for test: {}", pattern_name, test.name);
+        std::vector<FabricNodeId> devices = device_info_provider_.get_global_node_ids();
         TT_FATAL(!devices.empty(), "Cannot expand {}_multicast because no devices were found.", pattern_name);
 
         // Determine which devices should be senders
@@ -923,7 +992,7 @@ private:
 
     void expand_unidirectional_linear_unicast_or_multicast(
         ParsedTestConfig& test, const ParsedTrafficPatternConfig& base_pattern) {
-        log_info(LogTest, "Expanding unidirectional_linear pattern for test: {}", test.name);
+        log_debug(LogTest, "Expanding unidirectional_linear pattern for test: {}", test.name);
         std::vector<FabricNodeId> devices = device_info_provider_.get_local_node_ids();
         TT_FATAL(!devices.empty(), "Cannot expand unidirectional_linear because no devices were found.");
 
@@ -948,7 +1017,7 @@ private:
 
     void expand_full_or_half_ring_unicast_or_multicast(
         ParsedTestConfig& test, const ParsedTrafficPatternConfig& base_pattern, HighLevelTrafficPattern pattern_type) {
-        log_info(LogTest, "Expanding full_or_half_ring pattern for test: {}", test.name);
+        log_debug(LogTest, "Expanding full_or_half_ring pattern for test: {}", test.name);
         std::vector<FabricNodeId> devices = device_info_provider_.get_local_node_ids();
         TT_FATAL(!devices.empty(), "Cannot expand full_or_half_ring because no devices were found.");
 
@@ -963,7 +1032,7 @@ private:
                 // Check if the result is valid (has value)
                 if (!ring_neighbors.has_value()) {
                     // Skip this device as it's not on the perimeter and can't participate in ring multicast
-                    log_info(LogTest, "Skipping device {} as it's not on the perimeter ring", src_node.chip_id);
+                    log_debug(LogTest, "Skipping device {} as it's not on the perimeter ring", src_node.chip_id);
                     continue;
                 }
 
@@ -1011,13 +1080,13 @@ private:
     }
 
     void expand_sync_patterns(ParsedTestConfig& test) {
-        log_info(
+        log_debug(
             LogTest,
             "Expanding line sync patterns for test: {} with topology: {}",
             test.name,
             static_cast<int>(test.fabric_setup.topology));
 
-        std::vector<FabricNodeId> all_devices = device_info_provider_.get_local_node_ids();
+        std::vector<FabricNodeId> all_devices = device_info_provider_.get_global_node_ids();
         TT_FATAL(!all_devices.empty(), "Cannot expand line sync patterns because no devices were found.");
 
         // Create sync patterns based on topology - returns multiple patterns per device for mcast
@@ -1028,7 +1097,8 @@ private:
             const auto& sync_val = sync_patterns_and_sync_val_pair.second;
 
             // Create sender config with all split sync patterns
-            SenderConfig sync_sender = {.device = src_device, .patterns = sync_patterns};
+            // Sync always uses link 0 (no override allowed)
+            SenderConfig sync_sender = {.device = src_device, .patterns = sync_patterns, .link_id = 0};
 
             test.global_sync_configs.push_back(std::move(sync_sender));
 
@@ -1036,7 +1106,7 @@ private:
             test.global_sync_val = sync_val;
         }
 
-        log_info(
+        log_debug(
             LogTest,
             "Generated {} line sync configurations, line_syn_val: {}",
             test.global_sync_configs.size(),
@@ -1054,7 +1124,6 @@ private:
         base_sync_pattern.size = 0;                                     // No payload, just sync signal
         base_sync_pattern.num_packets = 1;                              // Single sync signal
         base_sync_pattern.atomic_inc_val = 1;                           // Increment by 1
-        base_sync_pattern.atomic_inc_wrap = 0xFFFF;                     // Large wrap value
 
         // Topology-specific routing - get multi-directional hops first
         auto [multi_directional_hops, global_sync_val] =
@@ -1160,7 +1229,7 @@ private:
         }
 
         uint32_t num_links = test.fabric_setup.num_links;
-        log_info(LogTest, "Expanding link duplicates for test '{}' with {} links", test.name, num_links);
+        log_debug(LogTest, "Expanding link duplicates for test '{}' with {} links", test.name, num_links);
 
         // Validate that num_links doesn't exceed available routing planes for any device
         if (!route_manager_.validate_num_links_supported(num_links)) {
@@ -1409,10 +1478,6 @@ private:
             out << YAML::Key << "atomic_inc_val";
             out << YAML::Value << config.atomic_inc_val.value();
         }
-        if (config.atomic_inc_wrap) {
-            out << YAML::Key << "atomic_inc_wrap";
-            out << YAML::Value << config.atomic_inc_wrap.value();
-        }
         if (config.mcast_start_hops) {
             out << YAML::Key << "mcast_start_hops";
             out << YAML::Value << config.mcast_start_hops.value();
@@ -1433,10 +1498,8 @@ private:
             to_yaml(out, config.core.value());
         }
 
-        if (config.link_id) {
-            out << YAML::Key << "link_id";
-            out << YAML::Value << config.link_id.value();
-        }
+        out << YAML::Key << "link_id";
+        out << YAML::Value << config.link_id;
 
         out << YAML::Key << "patterns";
         out << YAML::Value;
@@ -1452,7 +1515,13 @@ private:
     static void to_yaml(YAML::Emitter& out, const TestConfig& config) {
         out << YAML::BeginMap;
         out << YAML::Key << "name";
-        out << YAML::Value << config.name;
+        out << YAML::Value << config.parametrized_name;  // Use parametrized name for readability
+
+        // Optionally include original base name as metadata if different
+        if (!config.name.empty() && config.name != config.parametrized_name) {
+            out << YAML::Key << "base_name";
+            out << YAML::Value << config.name;  // Original name for reference
+        }
 
         if (config.seed != 0) {
             out << YAML::Key << "seed";
@@ -1512,7 +1581,7 @@ private:
         out << YAML::EndMap;
     }
 
-    static void to_yaml(YAML::Emitter& out, const std::vector<std::vector<eth_coord_t>>& mapping) {
+    static void to_yaml(YAML::Emitter& out, const std::vector<std::vector<EthCoord>>& mapping) {
         out << YAML::BeginSeq;
         for (const auto& row : mapping) {
             out << YAML::BeginSeq;

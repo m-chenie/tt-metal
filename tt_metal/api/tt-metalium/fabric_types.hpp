@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: © 2025 Tenstorrent Inc.
+// SPDX-FileCopyrightText: © 2025 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -54,3 +54,14 @@ using MeshId = tt::stl::StrongType<uint32_t, struct MeshIdTag>;
 using MeshHostRankId = tt::stl::StrongType<uint32_t, struct HostRankTag>;
 
 }  // namespace tt::tt_fabric
+namespace tt::tt_metal {
+
+using AsicID = tt::stl::StrongType<uint64_t, struct AsicIDTag>;
+using TrayID = tt::stl::StrongType<uint32_t, struct TrayIDTag>;
+using ASICLocation = tt::stl::StrongType<uint32_t, struct ASICLocationTag>;
+using RackID = tt::stl::StrongType<uint32_t, struct RackIDTag>;
+using UID = tt::stl::StrongType<uint32_t, struct UIDTag>;
+using HallID = tt::stl::StrongType<uint32_t, struct HallIDTag>;
+using AisleID = tt::stl::StrongType<uint32_t, struct AisleIDTag>;
+
+}  // namespace tt::tt_metal

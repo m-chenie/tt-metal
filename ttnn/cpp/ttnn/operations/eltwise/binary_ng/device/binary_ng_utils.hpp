@@ -15,13 +15,6 @@ namespace ttnn::operations::binary_ng {
 
 enum class KernelName {
     ReaderNoBcast,
-    ReaderRowBcast,
-    ReaderColBcast,
-    ReaderScalarBcast,
-    WriterNoBcast,
-    WriterRowBcast,
-    WriterColBcast,
-    WriterScalarBcast,
     WriterScalar,
     ComputeNoBcast,
     ComputeBcast,
@@ -74,6 +67,9 @@ struct OpConfig {
         XLOGY,
         LT,
         GT,
+        GE,
+        LE,
+        HYPOT,
     };
 
     template <class EnumT>
@@ -81,9 +77,9 @@ struct OpConfig {
 
     std::map<std::string, std::string> as_defines(DataType dtype) const;
 
-    std::optional<unary::UnaryOpType> process_lhs{};
-    std::optional<unary::UnaryOpType> process_rhs{};
-    std::optional<unary::UnaryOpType> postprocess{};
+    std::optional<unary::UnaryOpType> process_lhs;
+    std::optional<unary::UnaryOpType> process_rhs;
+    std::optional<unary::UnaryOpType> postprocess;
     std::variant<FpuBinaryOp, SfpuBinaryOp> binary_op;
     bool is_sfpu_op() const;
 };
