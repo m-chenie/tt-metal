@@ -46,27 +46,27 @@ int main() {
 
     KernelHandle binary_reader_kernel_id = CreateKernel(
         program,
-        OVERRIDE_KERNEL_PREFIX "subtract_2_integers_in_compute_llm/kernels/dataflow/reader_binary_1_tile.cpp",
+        OVERRIDE_KERNEL_PREFIX "multiply_kernels_llm/kernels/dataflow/reader_binary_1_tile.cpp",
         core,
         DataMovementConfig{.processor = DataMovementProcessor::RISCV_1, .noc = NOC::RISCV_1_default});
 
     KernelHandle unary_writer_kernel_id = CreateKernel(
         program,
-        OVERRIDE_KERNEL_PREFIX "subtract_2_integers_in_compute_llm/kernels/dataflow/writer_1_tile.cpp",
+        OVERRIDE_KERNEL_PREFIX "multiply_kernels_llm/kernels/dataflow/writer_1_tile.cpp",
         core,
         DataMovementConfig{.processor = DataMovementProcessor::RISCV_0, .noc = NOC::RISCV_0_default});
 
     KernelHandle eltwise_binary_kernel_id = CreateKernel(
         program,
-        OVERRIDE_KERNEL_PREFIX "subtract_2_integers_in_compute_llm/kernels/compute/subtract_2_tiles.cpp",
+        OVERRIDE_KERNEL_PREFIX "multiply_kernels_llm/kernels/compute/multiply_2_tiles.cpp",
         core,
         ComputeConfig{.math_fidelity = MathFidelity::HiFi4, .fp32_dest_acc_en = false, .math_approx_mode = false});
 
     std::vector<bfloat16> src0_vec(n_elements_per_tile);
     std::vector<bfloat16> src1_vec(n_elements_per_tile);
     std::mt19937 rng(std::random_device{}());
-    std::uniform_real_distribution<float> dist1(10.0f, 20.0f);
-    std::uniform_real_distribution<float> dist2(1.0f, 5.0f);
+    std::uniform_real_distribution<float> dist1(2.0f, 5.0f);
+    std::uniform_real_distribution<float> dist2(1.0f, 3.0f);
     for (size_t i = 0; i < n_elements_per_tile; ++i) {
         src0_vec[i] = bfloat16(dist1(rng));
         src1_vec[i] = bfloat16(dist2(rng));
@@ -93,12 +93,12 @@ int main() {
     bool success = true;
     int failures = 0;
     for (size_t i = 0; i < n_elements_per_tile; ++i) {
-        float expected = static_cast<float>(src0_vec[i]) - static_cast<float>(src1_vec[i]);
+        float expected = static_cast<float>(src0_vec[i]) * static_cast<float>(src1_vec[i]);
         if (std::abs(expected - static_cast<float>(result_vec[i])) > 0.1f) {
             if (failures < 5) {
                 fmt::print(
                     stderr,
-                    "Mismatch at index {}: {} - {} = {} (expected {})\n",
+                    "Mismatch at index {}: {} * {} = {} (expected {})\n",
                     i,
                     static_cast<float>(src0_vec[i]),
                     static_cast<float>(src1_vec[i]),
@@ -112,9 +112,9 @@ int main() {
     if (!success) {
         fmt::print("Error: {} mismatches found!\n", failures);
     } else {
-        fmt::print("Success: Subtraction kernel working correctly!\n");
+        fmt::print("Success: Multiplication kernel working correctly!\n");
         fmt::print(
-            "  Sample: {} - {} = {}\n",
+            "  Sample: {} * {} = {}\n",
             static_cast<float>(src0_vec[0]),
             static_cast<float>(src1_vec[0]),
             static_cast<float>(result_vec[0]));
