@@ -67,11 +67,9 @@ CORE_MODES = {
 RAG_SOURCES = {
     "single_core_examples": [
         "add_2_integers_in_compute",
-        "subtract_2_integers_in_compute_llm",
     ],
     "multi_core_examples": [
         "matmul/matmul_multi_core",
-        "subtract_multi_core_kernels_llm",
         "vecadd_multi_core",
     ],
     "api_headers": [

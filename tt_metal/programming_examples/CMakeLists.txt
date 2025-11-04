@@ -11,6 +11,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/contributed)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/add_single_core_generated)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/subtract_single_core_generated)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/subtract_multi_core_generated)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/add_multi_core_generated)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/add_2_integers_in_compute)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/add_2_integers_in_riscv)

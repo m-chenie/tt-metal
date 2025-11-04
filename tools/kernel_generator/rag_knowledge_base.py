@@ -203,12 +203,7 @@ class RAGKnowledgeBase:
             else:
                 primary_example = "add_2_integers_in_compute"
         else:  # multi-core
-            if operation == "matmul":
-                primary_example = "matmul/matmul_multi_core"
-            elif operation in ["add", "subtract", "multiply"]:
-                primary_example = "subtract_multi_core_kernels_llm"
-            else:
-                primary_example = "matmul/matmul_multi_core"
+            primary_example = "matmul/matmul_multi_core"
 
         system_prompt = f"""You are an expert TT-Metal kernel developer for Tenstorrent's Wormhole architecture.
 

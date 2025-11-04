@@ -6,9 +6,6 @@ An AI-powered tool for generating TT-Metal kernels with iterative refinement and
 
 - **RAG-based Knowledge Base**: Uses existing TT-Metal examples as context
 - **Iterative Refinement**: Automatically compiles and fixes compilation errors
-- **Host Code Generation**: Generates complete examples including CMakeLists.txt
-- **Multi-core Support**: Handles complex SPMD parallelization patterns
-- **Validation Pipeline**: Tests generated kernels for correctness
 
 ## Quick Start
 
