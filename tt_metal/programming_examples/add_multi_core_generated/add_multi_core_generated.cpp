@@ -9,6 +9,8 @@
 #include "tt-metalium/constants.hpp"
 #include <tt-metalium/distributed.hpp>
 #include <tt-metalium/work_split.hpp>
+#include <tt-metalium/tensor_accessor_args.hpp>
+#include <tt-metalium/tilize_utils.hpp>
 
 using namespace tt;
 using namespace tt::tt_metal;
@@ -91,18 +93,35 @@ int main() {
     CreateCircularBuffer(program, all_cores, make_cb_config(CBIndex::c_1));
     CreateCircularBuffer(program, all_cores, make_cb_config(CBIndex::c_16));
 
-    // Create kernels using our generated multi-core kernel files
+    // Generate compile-time arguments for TensorAccessorArgs
+    std::vector<uint32_t> reader_compile_time_args = {};
+    std::vector<uint32_t> writer_compile_time_args = {};
+
+    // Add TensorAccessorArgs for input tensors (reader needs both src0 and src1)
+    TensorAccessorArgs(*src0_dram_buffer).append_to(reader_compile_time_args);
+    TensorAccessorArgs(*src1_dram_buffer).append_to(reader_compile_time_args);
+
+    // Add TensorAccessorArgs for output tensor (writer needs dst)
+    TensorAccessorArgs(*dst_dram_buffer).append_to(writer_compile_time_args);
+
+    // Create kernels using our generated multi-core kernel files with compile-time args
     auto reader_kernel_id = CreateKernel(
         program,
         OVERRIDE_KERNEL_PREFIX "add_multi_core_generated/kernels/dataflow/reader_binary_tiles_partitioned.cpp",
         all_cores,
-        DataMovementConfig{.processor = DataMovementProcessor::RISCV_1, .noc = NOC::RISCV_1_default});
+        DataMovementConfig{
+            .processor = DataMovementProcessor::RISCV_1,
+            .noc = NOC::RISCV_1_default,
+            .compile_args = reader_compile_time_args});
 
     auto writer_kernel_id = CreateKernel(
         program,
         OVERRIDE_KERNEL_PREFIX "add_multi_core_generated/kernels/dataflow/writer_tiles_partitioned.cpp",
         all_cores,
-        DataMovementConfig{.processor = DataMovementProcessor::RISCV_0, .noc = NOC::RISCV_0_default});
+        DataMovementConfig{
+            .processor = DataMovementProcessor::RISCV_0,
+            .noc = NOC::RISCV_0_default,
+            .compile_args = writer_compile_time_args});
 
     auto compute_kernel_id = CreateKernel(
         program,

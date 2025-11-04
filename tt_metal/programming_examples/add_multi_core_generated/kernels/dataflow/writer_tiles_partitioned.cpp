@@ -12,24 +12,22 @@ void kernel_main() {
 
     constexpr uint32_t cb_id_out = tt::CBIndex::c_16;
 
-    // Get tile size for calculations
+    // Create the address generator for the output buffer. Due to us sharing buffer and circular buffer
+    // configuration parameters (e.g. same data type and same page size) in the host code, we can grab
+    // the same parameters from the circular buffer as we would from the DRAM buffer.
     const uint32_t tile_bytes = get_tile_size(cb_id_out);
 
-    // Configure the address generator for the output buffer using interleaved addressing
-    const InterleavedAddrGenFast<true> dst = {
-        .bank_base_address = dst_addr,         // Base address of the output buffer
-        .page_size = tile_bytes,               // Size of a buffer page
-        .data_format = DataFormat::Float16_b,  // Data format of the buffer
-    };
+    constexpr auto c_args = TensorAccessorArgs<0>();
+    const auto c = TensorAccessor(c_args, dst_addr, tile_bytes);
 
     // Loop through the tile indices and write each tile to DRAM in order.
     uint32_t end_id = start_id + num_tiles;
     for (uint32_t i = start_id; i < end_id; ++i) {
         // Wait for the kernel to produce an output tile
         cb_wait_front(cb_id_out, 1);
-        // Write the output tile to DRAM using the proper tile index
+        // Write the output tile to DRAM.
         uint32_t l1_read_addr = get_read_ptr(cb_id_out);
-        noc_async_write_tile(i, dst, l1_read_addr);
+        noc_async_write_tile(i, c, l1_read_addr);
         noc_async_write_barrier();  // This will wait until the write is done. As an alternative,
                                     // noc_async_write_flushed() can be faster because it waits
                                     // until the write request is sent. In that case, you have to

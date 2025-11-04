@@ -13,8 +13,8 @@ namespace NAMESPACE {
  * @brief Main kernel function for multi-core addition (C = A + B).
  *
  * This function performs element-wise addition of two matrices using tiles.
- * It initializes the element-wise addition engine and sets up circular buffers for input and output.
- * For each output tile, it:
+ * It initializes the addition operation and sets up circular buffers for input and output.
+ * For each output tile (indexed by i), it:
  *   - Acquires the destination buffer.
  *   - Waits for input tiles to be available in the circular buffers.
  *   - Performs a tile-wise addition using `add_tiles`.
@@ -37,40 +37,39 @@ void MAIN {
     constexpr tt::CBIndex cb_in1 = tt::CBIndex::c_1;
     constexpr tt::CBIndex cb_out = tt::CBIndex::c_16;
 
-    // Setup the element-wise addition engine for the operation and specify the input
-    // and output circular buffers.
+    // Setup the addition operation and specify the input and output circular buffers.
     binary_op_init_common(cb_in0, cb_in1, cb_out);
     add_tiles_init(cb_in0, cb_in1);
 
-    // Process each output tile
+    // Loop over the number of output tiles to produce
     for (uint32_t i = 0; i < num_output_tiles; ++i) {
         // Acquire tile registers for the output tile
         tile_regs_acquire();
 
-        // Wait for the input tiles to be available in the input circular buffers.
+        // Wait for input tiles to be available in the circular buffers
         cb_wait_front(cb_in0, 1);
         cb_wait_front(cb_in1, 1);
 
-        // Perform the addition for the current tile.
+        // Perform the addition for the current tile
         add_tiles(cb_in0, cb_in1, 0, 0, 0);
-
-        // Mark the input tiles as used by popping them from the front of the circular buffers.
-        cb_pop_front(cb_in0, 1);
-        cb_pop_front(cb_in1, 1);
 
         // Commit and wait for the registers to be populated with the results
         tile_regs_commit();
         tile_regs_wait();
 
-        // Ensure the output circular buffer has space for the result tile.
+        // Reserve space in the output circular buffer for the result tile
         cb_reserve_back(cb_out, 1);
-        // Pack the result tile into the output circular buffer.
+        // Pack the result tile into the output circular buffer
         pack_tile(0, cb_out);
-        // Mark the output tile as ready so the writer can read it.
+        // Mark the output tile as ready
         cb_push_back(cb_out, 1);
 
-        // Release the registers for the next output tile.
+        // Release the tile registers
         tile_regs_release();
+
+        // Pop the used input tiles from the circular buffers
+        cb_pop_front(cb_in0, 1);
+        cb_pop_front(cb_in1, 1);
     }
 }
 }  // namespace NAMESPACE
