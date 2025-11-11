@@ -86,7 +86,7 @@ cd KernelBench/scripts
 
 2. **Set environment variables**:
    ```bash
-   export OPENAI_API_KEY="your-api-key-here"
+   export GROQ_API_KEY="your-api-key-here"
    export TT_METAL_HOME="/path/to/tt-metal"  # Optional, auto-detected
    ```
 

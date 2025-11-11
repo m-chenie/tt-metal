@@ -20,18 +20,22 @@ class RAGKnowledgeBase:
         self.knowledge_base = {}
         self.api_documentation = {}
 
-    def build_knowledge_base(self, core_mode: str = "single") -> Dict[str, str]:
-        """Build complete knowledge base for the specified core mode"""
-        logger.info(f"Building RAG knowledge base for {core_mode}-core mode")
+    def build_knowledge_base(self, core_mode: str = "single", operation_type: str = "standard") -> Dict[str, str]:
+        """Build complete knowledge base for the specified core mode and operation type"""
+        logger.info(f"Building RAG knowledge base for {core_mode}-core mode, {operation_type} operations")
 
         # Load API documentation
         self.api_documentation = self._load_api_documentation()
 
-        # Load examples based on core mode
+        # Load examples based on core mode and operation type
+        examples = {}
+        if operation_type == "sfpu_chain":
+            examples.update(self._load_sfpu_chain_examples())
+
         if core_mode == "single":
-            examples = self._load_single_core_examples()
+            examples.update(self._load_single_core_examples())
         else:
-            examples = self._load_multi_core_examples()
+            examples.update(self._load_multi_core_examples())
 
         # Combine everything
         knowledge_base = {
@@ -74,7 +78,8 @@ class RAGKnowledgeBase:
         patterns = [
             r"ALWI\s+void\s+\w+\([^)]+\)[^;]*;",  # ALWI functions
             r"inline\s+void\s+\w+\([^)]+\)[^{]*{[^}]*}",  # Inline functions
-            r"void\s+(add|sub|mul|mm|matmul|cb_|tile_)\w*\([^)]+\)",  # Specific API functions
+            r"void\s+(add|sub|mul|div|exp|log|init)_\w*\([^)]+\)",  # SFPU API functions
+            r"void\s+(cb_|tile_|noc_)\w*\([^)]+\)",  # Core API functions
         ]
 
         extracted = []
@@ -82,7 +87,23 @@ class RAGKnowledgeBase:
             matches = re.findall(pattern, content, re.MULTILINE | re.DOTALL)
             extracted.extend(matches)
 
-        return "\n".join(extracted[:20])  # Limit to first 20 matches
+        # Add specific SFPU pattern documentation
+        if "eltwise_binary_sfpu" in content:
+            extracted.append(
+                """
+// CRITICAL SFPU Pattern: Each operation type needs init before use
+div_binary_tile_init();   // Must call before div_binary_tile
+div_binary_tile(0, 1, 0); // R0 = R0 / R1
+
+exp_tile_init();          // Must call before exp_tile
+exp_tile(0);              // R0 = exp(R0)
+
+mul_binary_tile_init();   // Must call before mul_binary_tile
+mul_binary_tile(2, 0, 0); // R0 = R2 * R0
+"""
+            )
+
+        return "\n".join(extracted[:25])  # Increased limit
 
     def _create_api_summary(self, api_docs: Dict[str, str]) -> str:
         """Create a consolidated API summary"""
@@ -96,6 +117,42 @@ class RAGKnowledgeBase:
 - mul_tiles_init(cb_in0, cb_in1) - Initialize multiplication
 - mul_tiles(cb_in0, cb_in1, itile0, itile1, idst) - Perform multiplication
 - binary_op_init_common(cb_in0, cb_in1, cb_out) - Common binary op initialization
+
+### SFPU (Special Function Processing Unit) Operations:
+Each SFPU operation type requires its own init call immediately before use
+
+- init_sfpu(cb_in, cb_out) - Initialize SFPU for unary+binary operations
+- exp_tile_init() - Initialize exponential operation (call before exp_tile)
+- exp_tile(tile_idx) - Compute exponential of tile
+- log_tile_init() - Initialize logarithm operation (call before log_tile)
+- log_tile(tile_idx) - Compute natural log of tile
+
+SFPU Binary Operations (require individual inits before each operation type):
+- div_binary_tile_init() - Initialize division (call before div_binary_tile)
+- div_binary_tile(src0_idx, src1_idx, dst_idx) - Divide: dst = src0 / src1
+- add_binary_tile_init() - Initialize addition (call before add_binary_tile)
+- add_binary_tile(src0_idx, src1_idx, dst_idx) - Add two tiles
+- sub_binary_tile_init() - Initialize subtraction (call before sub_binary_tile)
+- sub_binary_tile(src0_idx, src1_idx, dst_idx) - Subtract: dst = src0 - src1
+- mul_binary_tile_init() - Initialize multiplication (call before mul_binary_tile)
+- mul_binary_tile(src0_idx, src1_idx, dst_idx) - Multiply two tiles
+
+SFPU Operation Pattern Example:
+```cpp
+// For mixed unary+binary operations
+init_sfpu(input_cb, output_cb);
+tile_regs_acquire();
+
+// Each operation needs its own init
+div_binary_tile_init();
+div_binary_tile(0, 1, 0);  // R0 = R0 / R1
+
+exp_tile_init();
+exp_tile(0);              // R0 = exp(R0)
+
+sub_binary_tile_init();
+sub_binary_tile(0, 2, 0); // R0 = R0 - R2
+```
 
 ### Matrix Multiplication:
 - mm_init() - Initialize matrix multiplication
@@ -193,11 +250,63 @@ class RAGKnowledgeBase:
 
         return examples
 
+    def _load_sfpu_chain_examples(self) -> Dict[str, str]:
+        """Load SFPU eltwise chain example implementations"""
+        examples = {}
+
+        for example_name in RAG_SOURCES["sfpu_chain_examples"]:
+            example_path = TT_METAL_HOME / "tt_metal" / "programming_examples" / example_name
+
+            # Load kernels
+            compute_path = example_path / "kernels" / "compute"
+            dataflow_path = example_path / "kernels" / "dataflow"
+
+            # Find compute kernel
+            for kernel_file in compute_path.glob("*.cpp"):
+                examples[f"{example_name}_compute"] = self._load_file(kernel_file)
+                break
+
+            # Find reader kernel
+            for kernel_file in dataflow_path.glob("reader*.cpp"):
+                examples[f"{example_name}_reader"] = self._load_file(kernel_file)
+                break
+
+            # Find writer kernel
+            for kernel_file in dataflow_path.glob("writer*.cpp"):
+                examples[f"{example_name}_writer"] = self._load_file(kernel_file)
+                break
+
+            # Load host code
+            host_files = list(example_path.glob("*.cpp"))
+            if host_files:
+                examples[f"{example_name}_host"] = self._load_file(host_files[0])
+
+            # Load documentation if available
+            md_files = list(example_path.glob("*.md"))
+            if md_files:
+                examples[f"{example_name}_documentation"] = self._load_file(md_files[0])
+
+            # Also check tech reports
+            tech_report_path = TT_METAL_HOME / "tech_reports" / "prog_examples" / example_name / f"{example_name}.md"
+            if tech_report_path.exists():
+                examples[f"{example_name}_tech_report"] = self._load_file(tech_report_path)
+
+        return examples
+
     def get_system_prompt(self, knowledge_base: Dict[str, str], core_mode: str, operation: str) -> str:
         """Create a comprehensive system prompt with RAG context"""
 
-        # Select primary example based on core mode and operation
-        if core_mode == "single":
+        from config import OPERATIONS
+
+        op_config = OPERATIONS.get(operation, {})
+        operation_type = op_config.get("operation_type", "standard")
+
+        # Select primary example based on core mode and operation type
+        if operation_type == "sfpu_chain":
+            primary_example = "sfpu_eltwise_chain"
+            # Also include single SFPU example for reference
+            secondary_example = "eltwise_sfpu"
+        elif core_mode == "single":
             if operation in ["add", "subtract", "multiply"]:
                 primary_example = "add_2_integers_in_compute"
             else:
@@ -228,11 +337,62 @@ class RAGKnowledgeBase:
 ```cpp
 {knowledge_base.get(f'{primary_example}_writer', 'Not available')}
 ```
+```cpp
+{knowledge_base.get(f'{primary_example}_writer', 'Not available')}
+```
 
 ### Host Code:
 ```cpp
 {knowledge_base.get(f'{primary_example}_host', 'Not available')}
+```"""
+
+        # Add SFPU-specific documentation if this is a chain operation
+        if operation_type == "sfpu_chain":
+            system_prompt += f"""
+
+## SFPU Chain Operation Documentation:
+{knowledge_base.get(f'{primary_example}_tech_report', knowledge_base.get(f'{primary_example}_documentation', 'Not available'))}
+
+## SFPU Chain Programming Patterns:
+
+### Key Principles for Chaining SFPU Operations:
+1. **Register Reuse**: Keep intermediate results in tile registers, never write to memory between operations
+2. **Sequential Init Calls**: Call *_init() for each operation before starting the chain
+3. **In-Place Operations**: Most SFPU operations modify the tile in registers in-place
+4. **Single Memory Transfer**: Only read from memory at start and write at end
+
+### Example Chain Pattern:
+```cpp
+// Initialize all operations first
+exp_tile_init();           // For exponential
+add_binary_tile_init();    // For addition
+log_tile_init();          // For logarithm
+
+// Load data once
+tile_regs_acquire();
+copy_tile(cb_in, 0, 0);    // Input -> register 0
+copy_tile(cb_const, 0, 1); // Constants -> register 1
+
+// Chain operations (all in registers)
+exp_tile(0);              // R0 = exp(R0)
+add_binary_tile(0, 1, 0); // R0 = R0 + R1
+log_tile(0);              // R0 = log(R0)
+
+// Write result once
+pack_tile(0, cb_out);
+tile_regs_release();
 ```
+
+### Available SFPU Operations:
+- **exp_tile(idx)** - Exponential function
+- **log_tile(idx)** - Natural logarithm
+- **add_binary_tile(src0, src1, dst)** - Addition
+- **sub_binary_tile(src0, src1, dst)** - Subtraction
+- **mul_binary_tile(src0, src1, dst)** - Multiplication
+- **div_binary_tile(src0, src1, dst)** - Division
+"""
+
+        system_prompt += f"""
 
 ## Key Patterns for {core_mode.upper()}-Core Implementation:
 

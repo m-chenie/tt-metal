@@ -151,47 +151,33 @@ class RefinementEngine:
         return project_path
 
     def _compile_project(self, project_path: Path) -> Dict[str, any]:
-        """Attempt to compile the project"""
+        """Attempt to compile the project using TT-Metal build system"""
         try:
-            # Change to TT-Metal root directory
-            original_cwd = Path.cwd()
+            # Use the TT-Metal build system
+            logger.info(f"Compiling project at {project_path}")
 
-            # Create build directory if it doesn't exist
-            build_dir = project_path / "build"
-            build_dir.mkdir(exist_ok=True)
-
-            # Configure with CMake
-            configure_cmd = [
-                "cmake",
-                "-S",
-                str(project_path),
-                "-B",
-                str(build_dir),
-                f"-DTT_METAL_HOME={TT_METAL_HOME}",
-                f"-DCMAKE_BUILD_TYPE={BUILD_TYPE}",
-            ]
-
-            configure_result = subprocess.run(
-                configure_cmd, capture_output=True, text=True, timeout=COMPILE_TIMEOUT, cwd=TT_METAL_HOME
-            )
-
-            if configure_result.returncode != 0:
-                return {
-                    "success": False,
-                    "output": configure_result.stderr + configure_result.stdout,
-                    "stage": "configure",
-                }
-
-            # Build
-            build_cmd = ["cmake", "--build", str(build_dir), "--parallel"]
+            # Try to build the specific programming example
+            # First, try using the TT-Metal build script
+            build_cmd = [str(TT_METAL_HOME / "build_metal.sh"), "--build-programming-examples"]
 
             build_result = subprocess.run(
                 build_cmd, capture_output=True, text=True, timeout=COMPILE_TIMEOUT, cwd=TT_METAL_HOME
             )
 
+            # Check the output for our specific example
+            output_text = build_result.stderr + build_result.stdout
+
+            # Look for errors related to our specific example
+            example_name = project_path.name
+            if example_name in output_text and ("error:" in output_text.lower() or "undefined" in output_text.lower()):
+                success = False
+            else:
+                # If the build completed without errors mentioning our example, consider it successful
+                success = build_result.returncode == 0
+
             return {
-                "success": build_result.returncode == 0,
-                "output": build_result.stderr + build_result.stdout,
+                "success": success,
+                "output": output_text,
                 "stage": "build",
             }
 

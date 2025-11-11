@@ -47,6 +47,29 @@ OPERATIONS = {
         "api_init": "mm_init",
         "api_compute": "matmul_tiles",
     },
+    # SFPU Eltwise Chain Operations
+    "softplus": {
+        "description": "softplus activation (C = log(1 + exp(A)))",
+        "kernel_name": "softplus_tiles",
+        "operation_symbol": "softplus",
+        "api_init": ["exp_tile_init", "add_binary_tile_init", "log_tile_init"],
+        "api_compute": ["exp_tile", "add_binary_tile", "log_tile"],
+        "operation_type": "sfpu_chain",
+        "requires_constants": True,
+        "constants": {"ones": 1.0},
+    },
+    "diode_equation": {
+        "description": "diode current equation (I = isat × (exp(V/vj) - 1))",
+        "kernel_name": "diode_equation",
+        "operation_symbol": "diode",
+        "api_init": ["div_binary_tile_init", "exp_tile_init", "sub_binary_tile_init", "mul_binary_tile_init"],
+        "api_compute": ["div_binary_tile", "exp_tile", "sub_binary_tile", "mul_binary_tile"],
+        "operation_type": "sfpu_chain",
+        "requires_constants": True,
+        "constants": {"ones": 1.0},
+        "inputs": ["V", "vj", "isat"],
+        "formula": "isat × (exp(V/vj) - 1)",
+    },
 }
 
 # Core Modes
@@ -67,6 +90,11 @@ CORE_MODES = {
 RAG_SOURCES = {
     "single_core_examples": [
         "add_2_integers_in_compute",
+        "eltwise_binary",  # Binary FPU operations
+        "eltwise_sfpu",  # Single operation SFPU
+    ],
+    "sfpu_chain_examples": [
+        "sfpu_eltwise_chain",
     ],
     "multi_core_examples": [
         "matmul/matmul_multi_core",
@@ -74,9 +102,13 @@ RAG_SOURCES = {
     ],
     "api_headers": [
         "tt_metal/include/compute_kernel_api/eltwise_binary.h",
+        "tt_metal/include/compute_kernel_api/eltwise_binary_sfpu.h",
+        "tt_metal/include/compute_kernel_api/eltwise_unary/eltwise_unary.h",
+        "tt_metal/include/compute_kernel_api/eltwise_unary/exp.h",
         "tt_metal/include/compute_kernel_api/cb_api.h",
         "tt_metal/include/compute_kernel_api/matmul.h",
         "tt_metal/include/compute_kernel_api/tile_move_copy.h",
+        "tt_metal/include/compute_kernel_api/common.h",
     ],
     "host_api_headers": [
         "tt_metal/include/tt-metalium/host_api.hpp",

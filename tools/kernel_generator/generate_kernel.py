@@ -7,45 +7,31 @@ If compilation fails, use --refine flag with path to fix issues.
 
 import os
 import sys
+import logging
+from typing import Dict, List, Optional, Tuple
 import argparse
 import re
 from pathlib import Path
 from datetime import datetime
 from openai import OpenAI
+from rag_knowledge_base import RAGKnowledgeBase
+from host_code_generator import HostCodeGenerator
+from config import (
+    OPENAI_MODEL_DEFAULT,
+    OPENAI_TEMPERATURE,
+    OPENAI_MAX_TOKENS,
+    TT_METAL_HOME,
+    OPERATIONS,
+    CORE_MODES,
+    MAX_REFINEMENT_ITERATIONS,
+)
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-
-# Supported operations
-OPERATIONS = {
-    "subtract": {
-        "description": "subtraction (C = A - B)",
-        "kernel_name": "subtract_2_tiles",
-        "operation_symbol": "-",
-    },
-    "multiply": {
-        "description": "multiplication (C = A * B)",
-        "kernel_name": "multiply_2_tiles",
-        "operation_symbol": "*",
-    },
-    "add": {
-        "description": "addition (C = A + B)",
-        "kernel_name": "add_2_tiles",
-        "operation_symbol": "+",
-    },
-}
-
-# Core modes
-CORE_MODES = {
-    "single": {
-        "description": "single-core implementation",
-        "suffix": "_single_core",
-    },
-    "multi": {
-        "description": "multi-core implementation",
-        "suffix": "_multi_core",
-    },
-}
 
 
 class KernelGenerator:
@@ -55,8 +41,160 @@ class KernelGenerator:
         self.client = OpenAI(api_key=openai_api_key)
         self.model = model
         self.rag_kb = RAGKnowledgeBase()
-        self.refinement_engine = RefinementEngine(self.client)
         self.host_generator = HostCodeGenerator(self.client)
+        # Initialize RefinementEngine
+        from refinement_engine import RefinementEngine
+
+        self.refinement_engine = RefinementEngine(self.client)
+
+    def refine_existing_example(
+        self,
+        target_path: str,
+        max_iterations: Optional[int] = None,
+    ) -> Dict[str, any]:
+        """Refine an existing programming example by fixing compilation errors"""
+
+        logger.info(f"Starting refinement of existing example: {target_path}")
+
+        # Resolve full path
+        if not os.path.isabs(target_path):
+            # If relative path, assume it's under programming_examples
+            full_path = TT_METAL_HOME / "tt_metal" / "programming_examples" / target_path
+        else:
+            full_path = Path(target_path)
+
+        if not full_path.exists():
+            logger.error(f"Target path does not exist: {full_path}")
+            return {"success": False, "error": f"Path not found: {full_path}"}
+
+        # Extract operation and core_mode from path or detect from files
+        operation, core_mode = self._detect_operation_from_path(full_path)
+        if not operation:
+            logger.error("Could not detect operation type from path")
+            return {"success": False, "error": "Could not detect operation type"}
+
+        logger.info(f"Detected operation: {operation}, core_mode: {core_mode}")
+
+        # Load existing files
+        existing_files = self._load_existing_files(full_path)
+        if not existing_files:
+            logger.error("Could not load existing files")
+            return {"success": False, "error": "Could not load existing files"}
+
+        # Build RAG knowledge base for this operation
+        logger.info("Building RAG knowledge base...")
+        op_config = OPERATIONS.get(operation, {})
+        operation_type = op_config.get("operation_type", "standard")
+        knowledge_base = self.rag_kb.build_knowledge_base(core_mode, operation_type)
+        system_prompt = self.rag_kb.get_system_prompt(knowledge_base, core_mode, operation)
+
+        # Run iterative refinement
+        logger.info("Starting iterative refinement...")
+        refined_kernels, refined_host, refined_cmake, refinement_logs = self.refinement_engine.refine_kernels(
+            existing_files["kernels"],
+            existing_files["host_code"],
+            existing_files["cmake_content"],
+            operation,
+            core_mode,
+            system_prompt,
+            full_path,
+            max_iterations,
+        )
+
+        # Save refined files
+        logger.info("Saving refined files...")
+        self._save_generated_files(
+            full_path, operation, core_mode, refined_kernels, refined_host, refined_cmake, refinement_logs
+        )
+
+        logger.info("Refinement complete!")
+
+        return {
+            "success": True,
+            "output_dir": str(full_path),
+            "kernels": refined_kernels,
+            "host_code": refined_host,
+            "refinement_logs": refinement_logs,
+        }
+
+    def _detect_operation_from_path(self, path: Path) -> Tuple[str, str]:
+        """Detect operation and core_mode from path name"""
+        path_name = path.name.lower()
+
+        # Try to match against known operations
+        for operation in OPERATIONS.keys():
+            if operation in path_name:
+                # Detect core mode
+                if "multi" in path_name:
+                    return operation, "multi"
+                else:
+                    return operation, "single"
+
+        # If no direct match, try to detect from files
+        return self._detect_operation_from_files(path)
+
+    def _detect_operation_from_files(self, path: Path) -> Tuple[str, str]:
+        """Detect operation from file contents"""
+        # Look for compute kernel files
+        compute_files = list(path.glob("**/compute/*.cpp"))
+        if not compute_files:
+            return "", ""
+
+        # Read first compute file and look for operation patterns
+        try:
+            content = compute_files[0].read_text()
+            # Look for specific operation patterns in the code
+            for operation, config in OPERATIONS.items():
+                if config.get("api_compute", "") in content:
+                    # Detect core mode from content or file structure
+                    if "multi" in path.name.lower() or "multicore" in content:
+                        return operation, "multi"
+                    else:
+                        return operation, "single"
+        except Exception as e:
+            logger.warning(f"Error reading compute file: {e}")
+
+        return "", ""
+
+    def _load_existing_files(self, path: Path) -> Dict[str, any]:
+        """Load existing kernel files, host code, and CMakeLists.txt"""
+        files = {"kernels": {}, "host_code": "", "cmake_content": ""}
+
+        try:
+            # Load kernel files
+            compute_files = list(path.glob("**/compute/*.cpp"))
+            dataflow_files = list(path.glob("**/dataflow/*.cpp"))
+
+            # Load compute kernel
+            if compute_files:
+                files["kernels"]["compute"] = compute_files[0].read_text()
+
+            # Load dataflow kernels
+            for df_file in dataflow_files:
+                if "reader" in df_file.name.lower():
+                    files["kernels"]["reader"] = df_file.read_text()
+                elif "writer" in df_file.name.lower():
+                    files["kernels"]["writer"] = df_file.read_text()
+
+            # Load host code
+            host_files = list(path.glob("*.cpp"))
+            if host_files:
+                files["host_code"] = host_files[0].read_text()
+
+            # Load CMakeLists.txt
+            cmake_files = list(path.glob("**/CMakeLists.txt"))
+            if cmake_files:
+                files["cmake_content"] = cmake_files[0].read_text()
+
+            logger.info(
+                f"Loaded {len(files['kernels'])} kernels, host code: {bool(files['host_code'])}, cmake: {bool(files['cmake_content'])}"
+            )
+
+        except Exception as e:
+            logger.error(f"Error loading existing files: {e}")
+            return {}
+
+        return files
 
     def generate_kernels(
         self,
@@ -84,7 +222,13 @@ class KernelGenerator:
 
         # Build RAG knowledge base
         logger.info("Building RAG knowledge base...")
-        knowledge_base = self.rag_kb.build_knowledge_base(core_mode)
+
+        # Determine operation type from config
+        op_config = OPERATIONS.get(operation, {})
+        operation_type = op_config.get("operation_type", "standard")
+
+        # Build knowledge base with operation type
+        knowledge_base = self.rag_kb.build_knowledge_base(core_mode, operation_type)
         system_prompt = self.rag_kb.get_system_prompt(knowledge_base, core_mode, operation)
 
         # Generate initial kernels
@@ -159,9 +303,14 @@ class KernelGenerator:
     ) -> str:
         """Generate a single kernel using the LLM"""
 
+        operation_type = op_config.get("operation_type", "standard")
+
         # Create specific prompt for this kernel type
         if kernel_type == "compute":
-            user_prompt = f"""Generate a TT-Metal compute kernel for {op_config['description']}.
+            if operation_type == "sfpu_chain":
+                user_prompt = self._create_sfpu_chain_compute_prompt(operation, op_config)
+            else:
+                user_prompt = f"""Generate a TT-Metal compute kernel for {op_config['description']}.
 
 Requirements:
 - Use the {op_config['api_init']}() and {op_config['api_compute']}() functions
@@ -244,6 +393,93 @@ Generate only the .cpp code."""
         except Exception as e:
             logger.error(f"Error generating {kernel_type} kernel: {e}")
             return ""
+
+    def _create_sfpu_chain_compute_prompt(self, operation: str, op_config: Dict[str, str]) -> str:
+        """Create specialized prompt for SFPU chain compute kernels"""
+
+        if operation == "diode_equation":
+            return f"""Generate a TT-Metal compute kernel for the diode equation: {op_config['formula']}
+
+This kernel implements a 4-step SFPU chain:
+1. V/vj (division)
+2. exp(V/vj) (exponential)
+3. exp(V/vj) - 1 (subtraction)
+4. isat × (exp(V/vj) - 1) (multiplication)
+
+Requirements:
+- Use SFPU chain pattern: keep intermediate results in registers
+- Initialize ALL operations first: {', '.join([f"{api}()" for api in op_config['api_init']])}
+- Chain operations: {' → '.join(op_config['api_compute'])}
+- Input circular buffers: CB_0 (V), CB_1 (vj), CB_2 (isat), CB_3 (ones constant)
+- Output circular buffer: CB_16 (I result)
+- Process single tile (32x32 elements)
+- Use tile register management pattern from RAG examples
+
+Implementation Pattern:
+```cpp
+// Initialize all SFPU operations first
+div_binary_tile_init();    // For V/vj
+exp_tile_init();          // For exp(V/vj)
+sub_binary_tile_init();   // For exp(V/vj) - 1
+mul_binary_tile_init();   // For isat × result
+
+// Load all inputs to registers (memory access)
+tile_regs_acquire();
+cb_wait_front(CB_0, 1); cb_wait_front(CB_1, 1);
+cb_wait_front(CB_2, 1); cb_wait_front(CB_3, 1);
+copy_tile(CB_0, 0, 0);    // V → R0
+copy_tile(CB_1, 0, 1);    // vj → R1
+copy_tile(CB_2, 0, 2);    // isat → R2
+copy_tile(CB_3, 0, 3);    // ones → R3
+
+// Chain operations (all in registers, no memory access)
+div_binary_tile(0, 1, 0); // R0 = V/vj
+exp_tile(0);              // R0 = exp(V/vj)
+sub_binary_tile(0, 3, 0); // R0 = exp(V/vj) - 1
+mul_binary_tile(2, 0, 0); // R0 = isat × (exp(V/vj) - 1)
+
+// Store final result (memory access)
+cb_reserve_back(CB_16, 1);
+pack_tile(0, CB_16);
+cb_pop_front(CB_0, 1); cb_pop_front(CB_1, 1);
+cb_pop_front(CB_2, 1); cb_pop_front(CB_3, 1);
+tile_regs_release();
+cb_push_back(CB_16, 1);
+```
+
+Filename: kernels/compute/{op_config['kernel_name']}.cpp
+Generate only the .cpp code."""
+
+        elif operation == "softplus":
+            return f"""Generate a TT-Metal compute kernel for softplus: {op_config['formula']}
+
+This kernel implements a 3-step SFPU chain:
+1. exp(A) (exponential)
+2. exp(A) + 1 (addition)
+3. log(exp(A) + 1) (logarithm)
+
+Requirements:
+- Use SFPU chain pattern: keep intermediate results in registers
+- Initialize ALL operations first: {', '.join([f"{api}()" for api in op_config['api_init']])}
+- Chain operations: {' → '.join(op_config['api_compute'])}
+- Input circular buffers: CB_0 (input), CB_1 (ones constant)
+- Output circular buffer: CB_16 (result)
+- Follow the exact pattern from sfpu_eltwise_chain example
+
+Filename: kernels/compute/{op_config['kernel_name']}.cpp
+Generate only the .cpp code."""
+
+        else:
+            return f"""Generate a TT-Metal compute kernel for {op_config['description']}.
+
+This implements an SFPU operation chain. Follow the pattern:
+1. Initialize all operations: {', '.join([f"{api}()" for api in op_config['api_init']])}
+2. Load data to registers once
+3. Chain operations: {' → '.join(op_config['api_compute'])}
+4. Store result once
+
+Filename: kernels/compute/{op_config['kernel_name']}.cpp
+Generate only the .cpp code."""
 
     def _save_generated_files(
         self,
@@ -331,11 +567,15 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--operation", choices=list(OPERATIONS.keys()), required=True, help="Operation to generate kernels for"
+        "--operation",
+        choices=list(OPERATIONS.keys()),
+        help="Operation to generate kernels for (required unless using --refine-target)",
     )
 
     parser.add_argument(
-        "--core-mode", choices=list(CORE_MODES.keys()), required=True, help="Core mode: single or multi"
+        "--core-mode",
+        choices=list(CORE_MODES.keys()),
+        help="Core mode: single or multi (required unless using --refine-target)",
     )
 
     parser.add_argument("--output", type=str, help="Output directory (default: auto-generated based on operation)")
@@ -345,6 +585,12 @@ def parse_args():
     )
 
     parser.add_argument("--refine", action="store_true", help="Enable iterative refinement with compilation feedback")
+
+    parser.add_argument(
+        "--refine-target",
+        type=str,
+        help="Path to existing programming example to refine (e.g., 'diode_equation_single_core_generated')",
+    )
 
     parser.add_argument("--generate-host", action="store_true", help="Generate host code and CMakeLists.txt")
 
@@ -365,45 +611,75 @@ def main():
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
+    # Validate argument combinations
+    if args.refine_target:
+        if not args.refine_target:
+            logger.error("--refine-target requires a path to an existing example")
+            return 1
+    else:
+        if not args.operation or not args.core_mode:
+            logger.error("--operation and --core-mode are required unless using --refine-target")
+            return 1
+
     # Check for OpenAI API key
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         logger.error("OPENAI_API_KEY environment variable not set")
         return 1
 
+    # Check for mutually exclusive modes
+    if args.refine_target and (args.operation or args.core_mode):
+        logger.warning("When using --refine-target, operation and core-mode are auto-detected")
+
     # Display configuration
     max_iterations = args.max_iterations if args.max_iterations else MAX_REFINEMENT_ITERATIONS
     print("=" * 80)
     print("TT-Metal Kernel Generator with Iterative Refinement")
     print("=" * 80)
-    print(f"Operation: {OPERATIONS[args.operation]['description']}")
-    print(f"Core Mode: {CORE_MODES[args.core_mode]['description']}")
-    print(f"Model: {args.model}")
-    print(f"Refinement: {'Enabled' if args.refine else 'Disabled'}")
-    if args.refine:
+
+    # Different configuration display for refine-target mode
+    if args.refine_target:
+        print(f"Mode: Refining existing example")
+        print(f"Target: {args.refine_target}")
+        print(f"Model: {args.model}")
         print(f"Max Iterations: {max_iterations}")
-    print(f"Host Code: {'Generate' if args.generate_host else 'Skip'}")
-    print(f"Validation: {'Enabled' if args.validate else 'Disabled'}")
+        print(f"Validation: {'Enabled' if args.validate else 'Disabled'}")
+    else:
+        print(f"Operation: {OPERATIONS[args.operation]['description']}")
+        print(f"Core Mode: {CORE_MODES[args.core_mode]['description']}")
+        print(f"Model: {args.model}")
+        print(f"Refinement: {'Enabled' if args.refine else 'Disabled'}")
+        if args.refine:
+            print(f"Max Iterations: {max_iterations}")
+        print(f"Host Code: {'Generate' if args.generate_host else 'Skip'}")
+        print(f"Validation: {'Enabled' if args.validate else 'Disabled'}")
 
     # Initialize generator
     generator = KernelGenerator(api_key, args.model)
 
-    # Set output directory
-    output_dir = None
-    if args.output:
-        output_dir = Path(args.output)
-
-    # Generate kernels
+    # Handle different modes
     try:
-        result = generator.generate_kernels(
-            operation=args.operation,
-            core_mode=args.core_mode,
-            output_dir=output_dir,
-            enable_refinement=args.refine,
-            generate_host=args.generate_host,
-            validate=args.validate,
-            max_iterations=args.max_iterations,
-        )
+        if args.refine_target:
+            # Refine existing example mode
+            result = generator.refine_existing_example(
+                target_path=args.refine_target,
+                max_iterations=max_iterations,
+            )
+        else:
+            # Normal generation mode
+            output_dir = None
+            if args.output:
+                output_dir = Path(args.output)
+
+            result = generator.generate_kernels(
+                operation=args.operation,
+                core_mode=args.core_mode,
+                output_dir=output_dir,
+                enable_refinement=args.refine,
+                generate_host=args.generate_host,
+                validate=args.validate,
+                max_iterations=args.max_iterations,
+            )
 
         if result["success"]:
             print("\n" + "=" * 80)
