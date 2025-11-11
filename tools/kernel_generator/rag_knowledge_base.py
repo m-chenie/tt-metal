@@ -1,430 +1,321 @@
 #!/usr/bin/env python3
 """
-RAG Knowledge Base Builder for TT-Metal Kernel Generator
-Loads and processes existing TT-Metal examples to create rich context for LLM generation.
+RAG Knowledge Base for TT-Metal Kernel Generator
+Builds knowledge base from configured TT-Metal examples and provides intelligent retrieval
 """
 
+import os
+import logging
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
-import logging
-from config import TT_METAL_HOME, RAG_SOURCES
+from typing import Dict, List, Set
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
+# Import configuration
+from config import RAG_SOURCES, EXAMPLES_DIR, TT_METAL_HOME
+
 
 class RAGKnowledgeBase:
-    """Builds and manages the RAG knowledge base for kernel generation"""
+    """RAG knowledge base that builds from configured TT-Metal examples"""
 
     def __init__(self):
-        self.knowledge_base = {}
-        self.api_documentation = {}
+        self.api_headers = ""  # Always included
+        self.host_api_headers = ""  # Always included
+        self.programming_examples = defaultdict(list)  # Selectively included
+        self._built = False
 
     def build_knowledge_base(self, core_mode: str = "single", operation_type: str = "standard") -> Dict[str, str]:
-        """Build complete knowledge base for the specified core mode and operation type"""
-        logger.info(f"Building RAG knowledge base for {core_mode}-core mode, {operation_type} operations")
+        """Build knowledge base from configured TT-Metal examples"""
+        if self._built:
+            return {}
 
-        # Load API documentation
-        self.api_documentation = self._load_api_documentation()
+        logger.info("Building knowledge base from configured TT-Metal sources...")
 
-        # Load examples based on core mode and operation type
-        examples = {}
-        if operation_type == "sfpu_chain":
-            examples.update(self._load_sfpu_chain_examples())
+        # Always extract all API headers (included in every prompt)
+        self._extract_api_headers()
+        self._extract_host_api_headers()
 
-        if core_mode == "single":
-            examples.update(self._load_single_core_examples())
-        else:
-            examples.update(self._load_multi_core_examples())
+        # Extract programming examples by category (selectively included)
+        self._extract_programming_examples()
 
-        # Combine everything
-        knowledge_base = {
-            **self.api_documentation,
-            **examples,
-        }
+        self._built = True
+        logger.info("Knowledge base built successfully")
+        return {}
 
-        logger.info(f"Knowledge base built with {len(knowledge_base)} components")
-        return knowledge_base
+    def get_system_prompt_smart(self, query: str, core_mode: str = "single") -> str:
+        """Create system prompt with smart retrieval based on query"""
+        if not self._built:
+            self.build_knowledge_base(core_mode)
 
-    def _load_file(self, filepath: Path) -> str:
-        """Load a file safely and return its contents"""
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                content = f.read()
-            logger.debug(f"Loaded {filepath} ({len(content)} chars)")
-            return content
-        except Exception as e:
-            logger.warning(f"Could not load {filepath}: {e}")
-            return ""
+        # Always include: system message + all API headers + all host API headers
+        context_parts = [
+            "You are an expert TT-Metal kernel developer for Tenstorrent's Wormhole architecture.",
+            self.api_headers,
+            self.host_api_headers,
+        ]
 
-    def _load_api_documentation(self) -> Dict[str, str]:
-        """Load and process API header files"""
-        api_docs = {}
+        # Selectively include programming examples based on query
+        relevant_examples = self._select_relevant_examples(query, core_mode)
+        if relevant_examples:
+            context_parts.extend(relevant_examples)
+
+        context_parts.append("Generate high-quality, production-ready TT-Metal code following the patterns above.")
+
+        return "\n\n".join(context_parts)
+
+    def _extract_api_headers(self):
+        """Extract all compute API headers (always included in prompts)"""
+        api_content = []
+        api_content.append("# TT-METAL COMPUTE API")
 
         for header_path in RAG_SOURCES["api_headers"]:
             full_path = TT_METAL_HOME / header_path
-            content = self._load_file(full_path)
-            if content:
-                # Extract key API functions
-                api_docs[f"api_{full_path.stem}"] = self._extract_api_functions(content)
+            if full_path.exists():
+                content = self._extract_header_apis(full_path)
+                if content:
+                    api_content.append(f"\n## {full_path.name}:")
+                    api_content.append(content)
+            else:
+                logger.warning(f"API header not found: {full_path}")
 
-        # Create consolidated API documentation
-        api_docs["api_consolidated"] = self._create_api_summary(api_docs)
-        return api_docs
+        self.api_headers = "\n".join(api_content)
 
-    def _extract_api_functions(self, content: str) -> str:
-        """Extract key API function signatures and documentation"""
-        # Extract function declarations with ALWI or inline
-        patterns = [
-            r"ALWI\s+void\s+\w+\([^)]+\)[^;]*;",  # ALWI functions
-            r"inline\s+void\s+\w+\([^)]+\)[^{]*{[^}]*}",  # Inline functions
-            r"void\s+(add|sub|mul|div|exp|log|init)_\w*\([^)]+\)",  # SFPU API functions
-            r"void\s+(cb_|tile_|noc_)\w*\([^)]+\)",  # Core API functions
-        ]
+    def _extract_host_api_headers(self):
+        """Extract all host API headers (always included in prompts)"""
+        host_content = []
+        host_content.append("# TT-METAL HOST API")
 
-        extracted = []
-        for pattern in patterns:
-            matches = re.findall(pattern, content, re.MULTILINE | re.DOTALL)
-            extracted.extend(matches)
+        for header_path in RAG_SOURCES["host_api_headers"]:
+            full_path = TT_METAL_HOME / header_path
+            if full_path.exists():
+                content = self._extract_header_apis(full_path)
+                if content:
+                    host_content.append(f"\n## {full_path.name}:")
+                    host_content.append(content)
+            else:
+                logger.warning(f"Host API header not found: {full_path}")
 
-        # Add specific SFPU pattern documentation
-        if "eltwise_binary_sfpu" in content:
-            extracted.append(
-                """
-// CRITICAL SFPU Pattern: Each operation type needs init before use
-div_binary_tile_init();   // Must call before div_binary_tile
-div_binary_tile(0, 1, 0); // R0 = R0 / R1
+        self.host_api_headers = "\n".join(host_content)
 
-exp_tile_init();          // Must call before exp_tile
-exp_tile(0);              // R0 = exp(R0)
-
-mul_binary_tile_init();   // Must call before mul_binary_tile
-mul_binary_tile(2, 0, 0); // R0 = R2 * R0
-"""
-            )
-
-        return "\n".join(extracted[:25])  # Increased limit
-
-    def _create_api_summary(self, api_docs: Dict[str, str]) -> str:
-        """Create a consolidated API summary"""
-        summary = """## TT-Metal Kernel API Summary
-
-### Element-wise Binary Operations:
-- add_tiles_init(cb_in0, cb_in1) - Initialize addition
-- add_tiles(cb_in0, cb_in1, itile0, itile1, idst) - Perform addition
-- sub_tiles_init(cb_in0, cb_in1) - Initialize subtraction
-- sub_tiles(cb_in0, cb_in1, itile0, itile1, idst) - Perform subtraction
-- mul_tiles_init(cb_in0, cb_in1) - Initialize multiplication
-- mul_tiles(cb_in0, cb_in1, itile0, itile1, idst) - Perform multiplication
-- binary_op_init_common(cb_in0, cb_in1, cb_out) - Common binary op initialization
-
-### SFPU (Special Function Processing Unit) Operations:
-Each SFPU operation type requires its own init call immediately before use
-
-- init_sfpu(cb_in, cb_out) - Initialize SFPU for unary+binary operations
-- exp_tile_init() - Initialize exponential operation (call before exp_tile)
-- exp_tile(tile_idx) - Compute exponential of tile
-- log_tile_init() - Initialize logarithm operation (call before log_tile)
-- log_tile(tile_idx) - Compute natural log of tile
-
-SFPU Binary Operations (require individual inits before each operation type):
-- div_binary_tile_init() - Initialize division (call before div_binary_tile)
-- div_binary_tile(src0_idx, src1_idx, dst_idx) - Divide: dst = src0 / src1
-- add_binary_tile_init() - Initialize addition (call before add_binary_tile)
-- add_binary_tile(src0_idx, src1_idx, dst_idx) - Add two tiles
-- sub_binary_tile_init() - Initialize subtraction (call before sub_binary_tile)
-- sub_binary_tile(src0_idx, src1_idx, dst_idx) - Subtract: dst = src0 - src1
-- mul_binary_tile_init() - Initialize multiplication (call before mul_binary_tile)
-- mul_binary_tile(src0_idx, src1_idx, dst_idx) - Multiply two tiles
-
-SFPU Operation Pattern Example:
-```cpp
-// For mixed unary+binary operations
-init_sfpu(input_cb, output_cb);
-tile_regs_acquire();
-
-// Each operation needs its own init
-div_binary_tile_init();
-div_binary_tile(0, 1, 0);  // R0 = R0 / R1
-
-exp_tile_init();
-exp_tile(0);              // R0 = exp(R0)
-
-sub_binary_tile_init();
-sub_binary_tile(0, 2, 0); // R0 = R0 - R2
-```
-
-### Matrix Multiplication:
-- mm_init() - Initialize matrix multiplication
-- matmul_tiles(cb_a, cb_b, itile0, itile1, idst) - Perform matrix multiplication
-
-### Tile Management:
-- tile_regs_acquire() - Acquire destination registers
-- tile_regs_commit() - Commit results to packer
-- tile_regs_wait() - Wait for packer completion
-- tile_regs_release() - Release registers
-- pack_tile(dst_index, cb_out) - Pack tile to circular buffer
-
-### Circular Buffer Operations:
-- cb_wait_front(cb_id, num_tiles) - Wait for input data
-- cb_reserve_back(cb_id, num_tiles) - Reserve output space
-- cb_push_back(cb_id, num_tiles) - Push output data
-- cb_pop_front(cb_id, num_tiles) - Pop input data
-
-### Memory Operations:
-- noc_async_read_tile(src_addr, cb_id, tile_id) - Async read tile
-- noc_async_write_tile(tile_id, cb_id, dst_addr) - Async write tile
-- noc_async_read_barrier() - Wait for reads to complete
-- noc_async_write_barrier() - Wait for writes to complete
-"""
-        return summary
-
-    def _load_single_core_examples(self) -> Dict[str, str]:
-        """Load single-core example implementations"""
-        examples = {}
-
+    def _extract_programming_examples(self):
+        """Extract programming examples by category"""
+        # Single core examples
         for example_name in RAG_SOURCES["single_core_examples"]:
-            example_path = TT_METAL_HOME / "tt_metal" / "programming_examples" / example_name
+            example_path = EXAMPLES_DIR / example_name
+            if example_path.exists():
+                pattern = self._extract_example_pattern(example_path, "single_core")
+                if pattern:
+                    self.programming_examples["single_core"].append(pattern)
+            else:
+                logger.warning(f"Single core example not found: {example_path}")
 
-            # Load kernels
-            compute_path = example_path / "kernels" / "compute"
-            dataflow_path = example_path / "kernels" / "dataflow"
-
-            # Find compute kernel
-            for kernel_file in compute_path.glob("*.cpp"):
-                examples[f"{example_name}_compute"] = self._load_file(kernel_file)
-                break
-
-            # Find reader kernel
-            for kernel_file in dataflow_path.glob("reader*.cpp"):
-                examples[f"{example_name}_reader"] = self._load_file(kernel_file)
-                break
-
-            # Find writer kernel
-            for kernel_file in dataflow_path.glob("writer*.cpp"):
-                examples[f"{example_name}_writer"] = self._load_file(kernel_file)
-                break
-
-            # Load host code if available
-            host_files = list(example_path.glob("*.cpp"))
-            if host_files:
-                examples[f"{example_name}_host"] = self._load_file(host_files[0])
-
-        return examples
-
-    def _load_multi_core_examples(self) -> Dict[str, str]:
-        """Load multi-core example implementations"""
-        examples = {}
-
-        for example_name in RAG_SOURCES["multi_core_examples"]:
-            example_path = TT_METAL_HOME / "tt_metal" / "programming_examples" / example_name
-
-            # Load kernels
-            compute_path = example_path / "kernels" / "compute"
-            dataflow_path = example_path / "kernels" / "dataflow"
-
-            # Find compute kernel
-            for kernel_file in compute_path.glob("*.cpp"):
-                examples[f"{example_name}_compute"] = self._load_file(kernel_file)
-                break
-
-            # Find reader kernel
-            for kernel_file in dataflow_path.glob("reader*.cpp"):
-                examples[f"{example_name}_reader"] = self._load_file(kernel_file)
-                break
-
-            # Find writer kernel
-            for kernel_file in dataflow_path.glob("writer*.cpp"):
-                examples[f"{example_name}_writer"] = self._load_file(kernel_file)
-                break
-
-            # Load host code
-            host_files = list(example_path.glob("*.cpp"))
-            if host_files:
-                examples[f"{example_name}_host"] = self._load_file(host_files[0])
-
-            # Load CMakeLists.txt if available
-            cmake_file = example_path / "CMakeLists.txt"
-            if cmake_file.exists():
-                examples[f"{example_name}_cmake"] = self._load_file(cmake_file)
-
-        return examples
-
-    def _load_sfpu_chain_examples(self) -> Dict[str, str]:
-        """Load SFPU eltwise chain example implementations"""
-        examples = {}
-
+        # SFPU chain examples
         for example_name in RAG_SOURCES["sfpu_chain_examples"]:
-            example_path = TT_METAL_HOME / "tt_metal" / "programming_examples" / example_name
+            example_path = EXAMPLES_DIR / example_name
+            if example_path.exists():
+                pattern = self._extract_example_pattern(example_path, "sfpu_chain")
+                if pattern:
+                    self.programming_examples["sfpu_chain"].append(pattern)
+            else:
+                logger.warning(f"SFPU chain example not found: {example_path}")
 
-            # Load kernels
-            compute_path = example_path / "kernels" / "compute"
-            dataflow_path = example_path / "kernels" / "dataflow"
+        # Multi core examples
+        for example_name in RAG_SOURCES["multi_core_examples"]:
+            example_path = EXAMPLES_DIR / example_name
+            if example_path.exists():
+                pattern = self._extract_example_pattern(example_path, "multi_core")
+                if pattern:
+                    self.programming_examples["multi_core"].append(pattern)
+            else:
+                logger.warning(f"Multi core example not found: {example_path}")
 
-            # Find compute kernel
-            for kernel_file in compute_path.glob("*.cpp"):
-                examples[f"{example_name}_compute"] = self._load_file(kernel_file)
-                break
+    def _extract_header_apis(self, header_path: Path) -> str:
+        """Extract API functions from header file"""
+        content = self._read_file_safe(header_path)
+        if not content:
+            return ""
 
-            # Find reader kernel
-            for kernel_file in dataflow_path.glob("reader*.cpp"):
-                examples[f"{example_name}_reader"] = self._load_file(kernel_file)
-                break
+        # Extract function declarations, defines, and important patterns
+        api_lines = []
+        lines = content.split("\n")
 
-            # Find writer kernel
-            for kernel_file in dataflow_path.glob("writer*.cpp"):
-                examples[f"{example_name}_writer"] = self._load_file(kernel_file)
-                break
+        for line in lines:
+            stripped = line.strip()
+            # Skip comments and empty lines
+            if not stripped or stripped.startswith("//") or stripped.startswith("/*"):
+                continue
 
-            # Load host code
-            host_files = list(example_path.glob("*.cpp"))
-            if host_files:
-                examples[f"{example_name}_host"] = self._load_file(host_files[0])
+            # Extract function declarations, defines, and important patterns
+            if any(
+                pattern in stripped
+                for pattern in [
+                    "ALWAYSINLINE",
+                    "inline",
+                    "constexpr",
+                    "FORCE_INLINE",
+                    "cb_wait_front",
+                    "cb_reserve_back",
+                    "cb_push_back",
+                    "cb_pop_front",
+                    "tile_regs_",
+                    "pack_tile",
+                    "copy_tile",
+                    "unpack_tilize",
+                    "noc_async_read",
+                    "noc_async_write",
+                    "_barrier",
+                    "_init(",
+                    "_tile(",
+                    "_tiles(",
+                    "get_compile_time_arg",
+                    "#define",
+                    "enum class",
+                    "namespace",
+                ]
+            ):
+                api_lines.append(stripped)
 
-            # Load documentation if available
-            md_files = list(example_path.glob("*.md"))
-            if md_files:
-                examples[f"{example_name}_documentation"] = self._load_file(md_files[0])
+        return "\n".join(api_lines[:50]) if api_lines else ""  # Limit to prevent huge context
 
-            # Also check tech reports
-            tech_report_path = TT_METAL_HOME / "tech_reports" / "prog_examples" / example_name / f"{example_name}.md"
-            if tech_report_path.exists():
-                examples[f"{example_name}_tech_report"] = self._load_file(tech_report_path)
+    def _extract_example_pattern(self, example_path: Path, category: str) -> str:
+        """Extract key patterns from a programming example"""
+        pattern_parts = [f"# {category.upper()} EXAMPLE: {example_path.name}"]
 
-        return examples
+        # Look for kernels directory
+        kernels_dir = example_path / "kernels"
+        if kernels_dir.exists():
+            # Extract compute kernel patterns
+            compute_dir = kernels_dir / "compute"
+            if compute_dir.exists():
+                for cpp_file in compute_dir.glob("*.cpp"):
+                    content = self._extract_key_code_patterns(cpp_file, "compute")
+                    if content:
+                        pattern_parts.append(f"\n## Compute Kernel ({cpp_file.name}):")
+                        pattern_parts.append(f"```cpp\n{content}\n```")
+
+            # Extract dataflow kernel patterns
+            dataflow_dir = kernels_dir / "dataflow"
+            if dataflow_dir.exists():
+                for cpp_file in dataflow_dir.glob("*.cpp"):
+                    content = self._extract_key_code_patterns(cpp_file, "dataflow")
+                    if content:
+                        kernel_type = "reader" if "reader" in cpp_file.name else "writer"
+                        pattern_parts.append(f"\n## {kernel_type.title()} Kernel ({cpp_file.name}):")
+                        pattern_parts.append(f"```cpp\n{content}\n```")
+
+        # Extract host code pattern
+        for cpp_file in example_path.glob("*.cpp"):
+            if "kernel" not in cpp_file.name:  # Skip kernel files, get main host file
+                content = self._extract_key_code_patterns(cpp_file, "host")
+                if content:
+                    pattern_parts.append(f"\n## Host Code ({cpp_file.name}):")
+                    pattern_parts.append(f"```cpp\n{content}\n```")
+                break  # Just get one main host file
+
+        return "\n".join(pattern_parts) if len(pattern_parts) > 1 else ""
+
+    def _extract_key_code_patterns(self, file_path: Path, code_type: str) -> str:
+        """Extract key code patterns from source file"""
+        content = self._read_file_safe(file_path)
+        if not content:
+            return ""
+
+        lines = content.split("\n")
+        key_lines = []
+
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if not stripped:
+                continue
+
+            # Keep important patterns based on code type
+            important_keywords = []
+            if code_type == "compute":
+                important_keywords = [
+                    "cb_wait_front",
+                    "cb_reserve_back",
+                    "cb_push_back",
+                    "cb_pop_front",
+                    "tile_regs_acquire",
+                    "tile_regs_release",
+                    "pack_tile",
+                    "copy_tile",
+                    "init_sfpu",
+                    "_tile_init",
+                    "_tile(",
+                    "_binary_tile",
+                    "void MAIN",
+                    "#include",
+                    "namespace NAMESPACE",
+                ]
+            elif code_type == "dataflow":
+                important_keywords = [
+                    "noc_async_read",
+                    "noc_async_write",
+                    "_barrier",
+                    "get_arg_val",
+                    "get_write_ptr",
+                    "get_read_ptr",
+                    "cb_reserve_back",
+                    "cb_push_back",
+                    "cb_wait_front",
+                    "cb_pop_front",
+                    "void kernel_main",
+                    "#include",
+                ]
+            elif code_type == "host":
+                important_keywords = [
+                    "CreateProgram",
+                    "CreateKernel",
+                    "SetRuntimeArgs",
+                    "EnqueueProgram",
+                    "CreateBuffer",
+                    "WriteBuffer",
+                    "ReadBuffer",
+                    "CreateDevice",
+                    "ConfigureProgram",
+                    "#include",
+                    "int main",
+                    "tt::tt_metal",
+                ]
+
+            if any(keyword in stripped for keyword in important_keywords):
+                key_lines.append(line.rstrip())  # Keep original indentation
+
+        # Limit to prevent huge context
+        return "\n".join(key_lines[:30]) if key_lines else ""
+
+    def _select_relevant_examples(self, query: str, core_mode: str) -> List[str]:
+        """Select relevant programming examples based on query and core mode"""
+        relevant = []
+        q = query.lower()
+
+        # Determine which example categories to include
+        if "sfpu" in q or "chain" in q or "exp" in q or "log" in q or "diode" in q:
+            # SFPU chain operations
+            relevant.extend(self.programming_examples.get("sfpu_chain", []))
+            # Also include single core for basic patterns
+            relevant.extend(self.programming_examples.get("single_core", []))
+        elif core_mode == "multi" or "multi" in q:
+            # Multi-core specific
+            relevant.extend(self.programming_examples.get("multi_core", []))
+        else:
+            # Default to single core
+            relevant.extend(self.programming_examples.get("single_core", []))
+
+        # Limit to prevent token overflow
+        return relevant[:3]  # Max 3 examples
+
+    def _read_file_safe(self, file_path: Path) -> str:
+        """Safely read file contents"""
+        try:
+            return file_path.read_text(encoding="utf-8")
+        except Exception as e:
+            logger.warning(f"Failed to read {file_path}: {e}")
+            return ""
 
     def get_system_prompt(self, knowledge_base: Dict[str, str], core_mode: str, operation: str) -> str:
-        """Create a comprehensive system prompt with RAG context"""
-
-        from config import OPERATIONS
-
-        op_config = OPERATIONS.get(operation, {})
-        operation_type = op_config.get("operation_type", "standard")
-
-        # Select primary example based on core mode and operation type
-        if operation_type == "sfpu_chain":
-            primary_example = "sfpu_eltwise_chain"
-            # Also include single SFPU example for reference
-            secondary_example = "eltwise_sfpu"
-        elif core_mode == "single":
-            if operation in ["add", "subtract", "multiply"]:
-                primary_example = "add_2_integers_in_compute"
-            else:
-                primary_example = "add_2_integers_in_compute"
-        else:  # multi-core
-            primary_example = "matmul/matmul_multi_core"
-
-        system_prompt = f"""You are an expert TT-Metal kernel developer for Tenstorrent's Wormhole architecture.
-
-# KNOWLEDGE BASE (RAG Context)
-
-## API Documentation
-{knowledge_base.get('api_consolidated', '')}
-
-## Primary Reference Example: {primary_example}
-
-### Compute Kernel:
-```cpp
-{knowledge_base.get(f'{primary_example}_compute', 'Not available')}
-```
-
-### Reader Kernel:
-```cpp
-{knowledge_base.get(f'{primary_example}_reader', 'Not available')}
-```
-
-### Writer Kernel:
-```cpp
-{knowledge_base.get(f'{primary_example}_writer', 'Not available')}
-```
-```cpp
-{knowledge_base.get(f'{primary_example}_writer', 'Not available')}
-```
-
-### Host Code:
-```cpp
-{knowledge_base.get(f'{primary_example}_host', 'Not available')}
-```"""
-
-        # Add SFPU-specific documentation if this is a chain operation
-        if operation_type == "sfpu_chain":
-            system_prompt += f"""
-
-## SFPU Chain Operation Documentation:
-{knowledge_base.get(f'{primary_example}_tech_report', knowledge_base.get(f'{primary_example}_documentation', 'Not available'))}
-
-## SFPU Chain Programming Patterns:
-
-### Key Principles for Chaining SFPU Operations:
-1. **Register Reuse**: Keep intermediate results in tile registers, never write to memory between operations
-2. **Sequential Init Calls**: Call *_init() for each operation before starting the chain
-3. **In-Place Operations**: Most SFPU operations modify the tile in registers in-place
-4. **Single Memory Transfer**: Only read from memory at start and write at end
-
-### Example Chain Pattern:
-```cpp
-// Initialize all operations first
-exp_tile_init();           // For exponential
-add_binary_tile_init();    // For addition
-log_tile_init();          // For logarithm
-
-// Load data once
-tile_regs_acquire();
-copy_tile(cb_in, 0, 0);    // Input -> register 0
-copy_tile(cb_const, 0, 1); // Constants -> register 1
-
-// Chain operations (all in registers)
-exp_tile(0);              // R0 = exp(R0)
-add_binary_tile(0, 1, 0); // R0 = R0 + R1
-log_tile(0);              // R0 = log(R0)
-
-// Write result once
-pack_tile(0, cb_out);
-tile_regs_release();
-```
-
-### Available SFPU Operations:
-- **exp_tile(idx)** - Exponential function
-- **log_tile(idx)** - Natural logarithm
-- **add_binary_tile(src0, src1, dst)** - Addition
-- **sub_binary_tile(src0, src1, dst)** - Subtraction
-- **mul_binary_tile(src0, src1, dst)** - Multiplication
-- **div_binary_tile(src0, src1, dst)** - Division
-"""
-
-        system_prompt += f"""
-
-## Key Patterns for {core_mode.upper()}-Core Implementation:
-
-### For Single-Core:
-- Simple sequential processing (one tile at a time)
-- Single reader/writer kernels
-- Basic circular buffer management
-- Straightforward host code with single core grid
-
-### For Multi-Core:
-- SPMD (Single Program Multiple Data) parallelization
-- Work distribution using split_work_to_cores()
-- Each core processes multiple tiles
-- Partitioned reader/writer kernels
-- Complex host code with mesh device management
-- Use InterleavedAddrGenFast<true> for address generation
-
-# YOUR ROLE
-
-Generate high-quality TT-Metal kernels by:
-1. Following the architectural patterns from the reference examples
-2. Selecting correct API functions for the requested operation
-3. Implementing proper error handling and optimization
-4. Using modern TT-Metal best practices
-5. Creating production-ready, well-documented code
-
-When generating code:
-- Include proper headers (#include <cstdint> for kernels)
-- Add meaningful comments explaining the logic
-- Use consistent variable naming and formatting
-- Handle edge cases and error conditions
-- Follow the exact patterns from working examples
-"""
-
-        return system_prompt
+        """Legacy compatibility method"""
+        return self.get_system_prompt_smart(f"{operation} {core_mode}", core_mode)

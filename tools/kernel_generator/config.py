@@ -12,10 +12,11 @@ TOOLS_DIR = TT_METAL_HOME / "tools" / "kernel_generator"
 EXAMPLES_DIR = TT_METAL_HOME / "tt_metal" / "programming_examples"
 OUTPUT_DIR = TOOLS_DIR / "generated_examples"
 
-# OpenAI Configuration
-OPENAI_MODEL_DEFAULT = "gpt-4o"
+# OpenAI / LLM Configuration
+# Default model switched to working Groq model
+OPENAI_MODEL_DEFAULT = "llama-3.3-70b-versatile"
 OPENAI_TEMPERATURE = 0.2
-OPENAI_MAX_TOKENS = 4000
+OPENAI_MAX_TOKENS = 8000  # Increased to Llama 3.3's max output limit
 
 # Supported Operations
 OPERATIONS = {

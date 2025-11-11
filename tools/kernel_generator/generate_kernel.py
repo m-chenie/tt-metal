@@ -13,7 +13,7 @@ import argparse
 import re
 from pathlib import Path
 from datetime import datetime
-from openai import OpenAI
+from groq import Groq
 from rag_knowledge_base import RAGKnowledgeBase
 from host_code_generator import HostCodeGenerator
 from config import (
@@ -30,15 +30,16 @@ from config import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# Initialize Groq client
+groq_api_key = os.environ.get("GROQ_API_KEY") or os.environ.get("OPENAI_API_KEY")
+client = Groq(api_key=groq_api_key)
 
 
 class KernelGenerator:
     """Main kernel generator with iterative refinement"""
 
-    def __init__(self, openai_api_key: str, model: str = OPENAI_MODEL_DEFAULT):
-        self.client = OpenAI(api_key=openai_api_key)
+    def __init__(self, groq_api_key: str, model: str = OPENAI_MODEL_DEFAULT):
+        self.client = Groq(api_key=groq_api_key)
         self.model = model
         self.rag_kb = RAGKnowledgeBase()
         self.host_generator = HostCodeGenerator(self.client)
@@ -220,20 +221,12 @@ class KernelGenerator:
 
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Build RAG knowledge base
-        logger.info("Building RAG knowledge base...")
+        # Store output directory for debug file saving
+        self._current_output_dir = output_dir
 
-        # Determine operation type from config
-        op_config = OPERATIONS.get(operation, {})
-        operation_type = op_config.get("operation_type", "standard")
-
-        # Build knowledge base with operation type
-        knowledge_base = self.rag_kb.build_knowledge_base(core_mode, operation_type)
-        system_prompt = self.rag_kb.get_system_prompt(knowledge_base, core_mode, operation)
-
-        # Generate initial kernels
+        # Generate initial kernels using smart RAG
         logger.info("Generating initial kernels...")
-        kernels = self._generate_initial_kernels(operation, core_mode, system_prompt)
+        kernels = self._generate_initial_kernels(operation, core_mode)
 
         if not kernels:
             logger.error("Failed to generate initial kernels")
@@ -244,6 +237,8 @@ class KernelGenerator:
         cmake_content = ""
         if generate_host:
             logger.info("Generating host code...")
+            # Get system prompt for host code generation
+            system_prompt = self.rag_kb.get_system_prompt_smart(f"host code {operation} {core_mode} core", core_mode)
             host_code = self.host_generator.generate_host_code(operation, core_mode, kernels, system_prompt, self.model)
             cmake_content = self.host_generator.generate_cmake_file(operation, core_mode)
 
@@ -251,6 +246,7 @@ class KernelGenerator:
         refinement_logs = []
         if enable_refinement and generate_host:
             logger.info("Starting iterative refinement...")
+            # Reuse the system_prompt from host code generation
             kernels, host_code, cmake_content, refinement_logs = self.refinement_engine.refine_kernels(
                 kernels, host_code, cmake_content, operation, core_mode, system_prompt, output_dir, max_iterations
             )
@@ -276,20 +272,20 @@ class KernelGenerator:
             "validation_results": validation_results,
         }
 
-    def _generate_initial_kernels(self, operation: str, core_mode: str, system_prompt: str) -> Dict[str, str]:
-        """Generate the initial set of kernels"""
+    def _generate_initial_kernels(self, operation: str, core_mode: str) -> Dict[str, str]:
+        """Generate the initial set of kernels using smart RAG"""
 
         kernels = {}
         op_config = OPERATIONS[operation]
 
         # Generate compute kernel
-        kernels["compute"] = self._generate_single_kernel("compute", operation, core_mode, system_prompt, op_config)
+        kernels["compute"] = self._generate_single_kernel("compute", operation, core_mode, op_config)
 
         # Generate reader kernel
-        kernels["reader"] = self._generate_single_kernel("reader", operation, core_mode, system_prompt, op_config)
+        kernels["reader"] = self._generate_single_kernel("reader", operation, core_mode, op_config)
 
         # Generate writer kernel
-        kernels["writer"] = self._generate_single_kernel("writer", operation, core_mode, system_prompt, op_config)
+        kernels["writer"] = self._generate_single_kernel("writer", operation, core_mode, op_config)
 
         # Check if all kernels were generated successfully
         if not all(kernels.values()):
@@ -299,11 +295,17 @@ class KernelGenerator:
         return kernels
 
     def _generate_single_kernel(
-        self, kernel_type: str, operation: str, core_mode: str, system_prompt: str, op_config: Dict[str, str]
+        self, kernel_type: str, operation: str, core_mode: str, op_config: Dict[str, str]
     ) -> str:
-        """Generate a single kernel using the LLM"""
+        """Generate a single kernel using smart RAG"""
 
         operation_type = op_config.get("operation_type", "standard")
+
+        # Create query for smart RAG
+        query = f"{kernel_type} kernel {operation} {core_mode} core"
+
+        # Get smart system prompt with relevant context only
+        system_prompt = self.rag_kb.get_system_prompt_smart(query, core_mode)
 
         # Create specific prompt for this kernel type
         if kernel_type == "compute":
@@ -372,6 +374,9 @@ Requirements:
 Generate only the .cpp code."""
 
         try:
+            # Save full prompt to markdown file for debugging
+            self._save_prompt_debug(kernel_type, operation, core_mode, system_prompt, user_prompt)
+
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
@@ -400,52 +405,11 @@ Generate only the .cpp code."""
         if operation == "diode_equation":
             return f"""Generate a TT-Metal compute kernel for the diode equation: {op_config['formula']}
 
-This kernel implements a 4-step SFPU chain:
-1. V/vj (division)
-2. exp(V/vj) (exponential)
-3. exp(V/vj) - 1 (subtraction)
-4. isat × (exp(V/vj) - 1) (multiplication)
-
 Requirements:
-- Use SFPU chain pattern: keep intermediate results in registers
-- Initialize ALL operations first: {', '.join([f"{api}()" for api in op_config['api_init']])}
-- Chain operations: {' → '.join(op_config['api_compute'])}
-- Input circular buffers: CB_0 (V), CB_1 (vj), CB_2 (isat), CB_3 (ones constant)
-- Output circular buffer: CB_16 (I result)
-- Process single tile (32x32 elements)
-- Use tile register management pattern from RAG examples
-
-Implementation Pattern:
-```cpp
-// Initialize all SFPU operations first
-div_binary_tile_init();    // For V/vj
-exp_tile_init();          // For exp(V/vj)
-sub_binary_tile_init();   // For exp(V/vj) - 1
-mul_binary_tile_init();   // For isat × result
-
-// Load all inputs to registers (memory access)
-tile_regs_acquire();
-cb_wait_front(CB_0, 1); cb_wait_front(CB_1, 1);
-cb_wait_front(CB_2, 1); cb_wait_front(CB_3, 1);
-copy_tile(CB_0, 0, 0);    // V → R0
-copy_tile(CB_1, 0, 1);    // vj → R1
-copy_tile(CB_2, 0, 2);    // isat → R2
-copy_tile(CB_3, 0, 3);    // ones → R3
-
-// Chain operations (all in registers, no memory access)
-div_binary_tile(0, 1, 0); // R0 = V/vj
-exp_tile(0);              // R0 = exp(V/vj)
-sub_binary_tile(0, 3, 0); // R0 = exp(V/vj) - 1
-mul_binary_tile(2, 0, 0); // R0 = isat × (exp(V/vj) - 1)
-
-// Store final result (memory access)
-cb_reserve_back(CB_16, 1);
-pack_tile(0, CB_16);
-cb_pop_front(CB_0, 1); cb_pop_front(CB_1, 1);
-cb_pop_front(CB_2, 1); cb_pop_front(CB_3, 1);
-tile_regs_release();
-cb_push_back(CB_16, 1);
-```
+- Implement the diode current equation using SFPU operations
+- Initialize all required operations before using them (pattern: operation_init() then operation())
+- Use single-core pattern with standard circular buffers
+- Follow TT-Metal API patterns from the provided examples
 
 Filename: kernels/compute/{op_config['kernel_name']}.cpp
 Generate only the .cpp code."""
@@ -453,18 +417,11 @@ Generate only the .cpp code."""
         elif operation == "softplus":
             return f"""Generate a TT-Metal compute kernel for softplus: {op_config['formula']}
 
-This kernel implements a 3-step SFPU chain:
-1. exp(A) (exponential)
-2. exp(A) + 1 (addition)
-3. log(exp(A) + 1) (logarithm)
-
 Requirements:
-- Use SFPU chain pattern: keep intermediate results in registers
-- Initialize ALL operations first: {', '.join([f"{api}()" for api in op_config['api_init']])}
-- Chain operations: {' → '.join(op_config['api_compute'])}
-- Input circular buffers: CB_0 (input), CB_1 (ones constant)
-- Output circular buffer: CB_16 (result)
-- Follow the exact pattern from sfpu_eltwise_chain example
+- Implement the softplus function using SFPU operations
+- Initialize all required operations before using them (pattern: operation_init() then operation())
+- Use single-core pattern with standard circular buffers
+- Follow TT-Metal API patterns from the provided examples
 
 Filename: kernels/compute/{op_config['kernel_name']}.cpp
 Generate only the .cpp code."""
@@ -558,6 +515,65 @@ Generate only the .cpp code."""
         # This would involve compiling and running the kernels
         return {"validation": "not_implemented"}
 
+    def _save_prompt_debug(
+        self, kernel_type: str, operation: str, core_mode: str, system_prompt: str, user_prompt: str
+    ):
+        """Save the complete prompt (system + user) to a markdown file for debugging."""
+        try:
+            # Use the stored output directory if available, otherwise current directory
+            if hasattr(self, "_current_output_dir") and self._current_output_dir:
+                debug_dir = self._current_output_dir
+                debug_dir.mkdir(parents=True, exist_ok=True)
+            else:
+                debug_dir = Path(".")
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            debug_file = debug_dir / f"prompt_debug_{kernel_type}_{operation}_{core_mode}_{timestamp}.md"
+
+            with open(debug_file, "w") as f:
+                f.write(f"# TT-Metal Kernel Generator - Debug Prompt\n\n")
+                f.write(f"**Generated at:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"**Kernel Type:** {kernel_type}\n")
+                f.write(f"**Operation:** {operation}\n")
+                f.write(f"**Core Mode:** {core_mode}\n")
+                f.write(f"**Model:** {self.model}\n\n")
+
+                f.write("## System Prompt (RAG Context)\n\n")
+                f.write("```\n")
+                f.write(system_prompt)
+                f.write("\n```\n\n")
+
+                f.write("## User Prompt\n\n")
+                f.write("```\n")
+                f.write(user_prompt)
+                f.write("\n```\n\n")
+
+                # Add some statistics
+                system_len = len(system_prompt)
+                user_len = len(user_prompt)
+                total_len = system_len + user_len
+
+                f.write("## Prompt Statistics\n\n")
+                f.write(f"- System Prompt Length: {system_len:,} characters\n")
+                f.write(f"- User Prompt Length: {user_len:,} characters\n")
+                f.write(f"- Total Prompt Length: {total_len:,} characters\n")
+                f.write(f"- Estimated Tokens: ~{total_len // 4:,} tokens\n\n")
+
+                # Extract RAG sources if available
+                if "# SFPU_CHAIN EXAMPLE:" in system_prompt or "# SINGLE_CORE EXAMPLE:" in system_prompt:
+                    f.write("## RAG Sources Included\n\n")
+                    if "# SFPU_CHAIN EXAMPLE:" in system_prompt:
+                        f.write("- SFPU Chain examples\n")
+                    if "# SINGLE_CORE EXAMPLE:" in system_prompt:
+                        f.write("- Single-core examples\n")
+                    if "# MULTI_CORE EXAMPLE:" in system_prompt:
+                        f.write("- Multi-core examples\n")
+
+            logger.info(f"Saved prompt debug to: {debug_file}")
+
+        except Exception as e:
+            logger.warning(f"Failed to save prompt debug: {e}")
+
 
 def parse_args():
     """Parse command-line arguments"""
@@ -621,10 +637,10 @@ def main():
             logger.error("--operation and --core-mode are required unless using --refine-target")
             return 1
 
-    # Check for OpenAI API key
-    api_key = os.environ.get("OPENAI_API_KEY")
+    # Check for API key (Groq or OpenAI)
+    api_key = os.environ.get("GROQ_API_KEY") or os.environ.get("OPENAI_API_KEY")
     if not api_key:
-        logger.error("OPENAI_API_KEY environment variable not set")
+        logger.error("GROQ_API_KEY or OPENAI_API_KEY environment variable not set")
         return 1
 
     # Check for mutually exclusive modes

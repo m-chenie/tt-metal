@@ -7,8 +7,8 @@ Generates complete host code and CMakeLists.txt for generated kernels.
 from pathlib import Path
 from typing import Dict, Optional
 import logging
-from openai import OpenAI
-from config import OPERATIONS, CORE_MODES, OPENAI_TEMPERATURE, OPENAI_MAX_TOKENS
+from groq import Groq
+from config import OPERATIONS, CORE_MODES, OPENAI_TEMPERATURE, OPENAI_MAX_TOKENS, OPENAI_MODEL_DEFAULT
 
 logger = logging.getLogger(__name__)
 
@@ -16,13 +16,16 @@ logger = logging.getLogger(__name__)
 class HostCodeGenerator:
     """Generates host code and build files for TT-Metal kernels"""
 
-    def __init__(self, openai_client: OpenAI):
+    def __init__(self, openai_client: Groq):
         self.client = openai_client
 
     def generate_host_code(
-        self, operation: str, core_mode: str, kernels: Dict[str, str], system_prompt: str, model: str = "gpt-4o"
+        self, operation: str, core_mode: str, kernels: Dict[str, str], system_prompt: str, model: str = None
     ) -> str:
         """Generate complete host code for the kernels"""
+
+        if model is None:
+            model = OPENAI_MODEL_DEFAULT
 
         op_config = OPERATIONS[operation]
         core_config = CORE_MODES[core_mode]
@@ -83,7 +86,8 @@ Generate only the complete .cpp host code file."""
                 max_tokens=OPENAI_MAX_TOKENS,
             )
 
-            host_code = response.choices[0].message.content
+            # Groq/OpenAI-compatible response handling
+            host_code = getattr(response.choices[0].message, "content", response.choices[0].message.content)
 
             # Extract code from markdown if present
             if "```cpp" in host_code:

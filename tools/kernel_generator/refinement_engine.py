@@ -11,7 +11,7 @@ import shutil
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import logging
-from openai import OpenAI
+from groq import Groq
 from config import (
     TT_METAL_HOME,
     COMPILE_TIMEOUT,
@@ -19,6 +19,7 @@ from config import (
     BUILD_TYPE,
     OPENAI_TEMPERATURE,
     OPENAI_MAX_TOKENS,
+    OPENAI_MODEL_DEFAULT,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,8 +28,13 @@ logger = logging.getLogger(__name__)
 class RefinementEngine:
     """Handles iterative refinement of generated kernels based on compilation feedback"""
 
-    def __init__(self, openai_client: OpenAI):
-        self.client = openai_client
+    def __init__(self, openai_client: Groq):
+        # Accept either Groq client or API key
+        if isinstance(openai_client, Groq):
+            self.client = openai_client
+        else:
+            api_key = os.environ.get("GROQ_API_KEY") or os.environ.get("OPENAI_API_KEY")
+            self.client = Groq(api_key=api_key)
         self.build_dir = TT_METAL_HOME / f"build_{BUILD_TYPE}"
 
     def refine_kernels(
@@ -87,6 +93,11 @@ class RefinementEngine:
 
                 logger.info(f"Found {len(errors)} compilation errors")
                 refinement_logs.append(f"Iteration {iteration + 1}: {len(errors)} errors found")
+
+                # Save compiler feedback to debug file
+                self._save_compiler_debug(
+                    output_dir, iteration + 1, compile_result["output"], errors, operation, core_mode
+                )
 
                 # Use LLM to fix errors
                 fixes = self._generate_fixes(
@@ -295,7 +306,7 @@ Return your response as JSON with this structure:
 
         try:
             response = self.client.chat.completions.create(
-                model="gpt-4o",
+                model=self.client.default_model if hasattr(self.client, "default_model") else OPENAI_MODEL_DEFAULT,
                 messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": fix_prompt}],
                 temperature=OPENAI_TEMPERATURE,
                 max_tokens=OPENAI_MAX_TOKENS,
@@ -348,3 +359,49 @@ Return your response as JSON with this structure:
                 logger.info("Applied fix to CMakeLists.txt")
 
         return updated_kernels, updated_host, updated_cmake
+
+    def _save_compiler_debug(
+        self,
+        output_dir: Path,
+        iteration: int,
+        compile_output: str,
+        errors: List[Dict[str, str]],
+        operation: str,
+        core_mode: str,
+    ):
+        """Save compiler output and errors to debug file for inspection."""
+        try:
+            from datetime import datetime
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            debug_file = output_dir / f"compiler_debug_iteration_{iteration}_{operation}_{core_mode}_{timestamp}.md"
+
+            with open(debug_file, "w") as f:
+                f.write(f"# TT-Metal Compiler Debug - Iteration {iteration}\n\n")
+                f.write(f"**Generated at:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"**Operation:** {operation}\n")
+                f.write(f"**Core Mode:** {core_mode}\n")
+                f.write(f"**Iteration:** {iteration}\n")
+                f.write(f"**Errors Found:** {len(errors)}\n\n")
+
+                f.write("## Compilation Errors Summary\n\n")
+                if errors:
+                    for i, error in enumerate(errors, 1):
+                        f.write(f"### Error {i}\n")
+                        f.write(f"- **File:** {error.get('file', 'unknown')}\n")
+                        f.write(f"- **Line:** {error.get('line', 'unknown')}\n")
+                        f.write(f"- **Column:** {error.get('column', 'unknown')}\n")
+                        f.write(f"- **Message:** {error.get('message', 'No message')}\n")
+                        f.write(f"- **Full Line:** `{error.get('full_line', 'No context')}`\n\n")
+                else:
+                    f.write("No structured errors found.\n\n")
+
+                f.write("## Full Compiler Output\n\n")
+                f.write("```\n")
+                f.write(compile_output)
+                f.write("\n```\n")
+
+            logger.info(f"Saved compiler debug to: {debug_file}")
+
+        except Exception as e:
+            logger.warning(f"Failed to save compiler debug: {e}")
