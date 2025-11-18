@@ -90,3 +90,16 @@ CANONICAL_EXAMPLES = {
         "host": "tt_metal/programming_examples/matmul/matmul_single_core/matmul_single_core.cpp",
     },
 }
+
+# Fallback CMakeLists.txt template if LLM generation fails
+CMAKELISTS_TEMPLATE = """cmake_minimum_required(VERSION 3.22...3.30)
+project(metal_example_{project_name})
+
+add_executable(metal_example_{project_name})
+target_sources(metal_example_{project_name} PRIVATE {source_file})
+
+if(NOT TARGET TT::Metalium)
+    find_package(TT-Metalium REQUIRED)
+endif()
+target_link_libraries(metal_example_{project_name} PUBLIC TT::Metalium)
+"""

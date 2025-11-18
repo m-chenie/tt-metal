@@ -32,14 +32,43 @@ logger = logging.getLogger("kernel_generator_v2")
 
 
 def parse_args():
-    ap = argparse.ArgumentParser(description="TT-Metal kernel generator v2 (no refinement).")
-    ap.add_argument("--operation", choices=list(OPERATIONS.keys()), required=True)
-    ap.add_argument("--core-mode", choices=list(CORE_MODES.keys()), required=True)
-    ap.add_argument("--model", default=MODEL_DEFAULT)
+    ap = argparse.ArgumentParser(description="TT-Metal kernel generator v2.")
+
+    # Mode selection: either generate OR iterate (mutually exclusive)
+    mode_group = ap.add_mutually_exclusive_group(required=True)
+    mode_group.add_argument(
+        "--operation",
+        choices=list(OPERATIONS.keys()),
+        help="Operation to generate (use with --core-mode for initial generation)",
+    )
+    mode_group.add_argument(
+        "--iterate", action="store_true", help="Iterative refinement mode (requires --example-path)"
+    )
+
+    # Arguments for initial generation
+    ap.add_argument("--core-mode", choices=list(CORE_MODES.keys()), help="Core mode (required with --operation)")
     ap.add_argument("--generate-host", action="store_true", help="Also generate host code")
     ap.add_argument("--output", type=str, help="Optional output dir (defaults under programming_examples)")
+
+    # Arguments for iteration
+    ap.add_argument("--example-path", type=str, help="Path to existing example (required with --iterate)")
+    ap.add_argument("--max-iterations", type=int, default=5, help="Maximum refinement iterations (default: 5)")
+
+    # Common arguments
+    ap.add_argument("--model", default=MODEL_DEFAULT)
     ap.add_argument("--save-prompt", action="store_true", help="Save assembled prompts to the output dir")
-    return ap.parse_args()
+
+    args = ap.parse_args()
+
+    # Validation
+    if args.operation and not args.core_mode:
+        ap.error("--operation requires --core-mode")
+    if args.iterate and not args.example_path:
+        ap.error("--iterate requires --example-path")
+    if args.core_mode and not args.operation:
+        ap.error("--core-mode requires --operation")
+
+    return args
 
 
 def split_blocks(text: str, op: str) -> Dict[str, str]:
@@ -157,6 +186,15 @@ def main(selected_args=None):
         raise SystemExit("Set GROQ_API_KEY or OPENAI_API_KEY")
 
     client = Groq(api_key=api_key)
+
+    # Route to iteration mode if --iterate flag is set
+    if args.iterate:
+        from iterative_refine import iterative_refine
+
+        iterative_refine(client, args)
+        return
+
+    # Otherwise, do initial generation
     host_gen = HostCodeGenerator(client)
 
     logger.info("Retrieving context...")
@@ -217,14 +255,15 @@ def main(selected_args=None):
 
     if args.generate_host:
         logger.info("Generating host code...")
-        host_code = host_gen.generate(args.operation, args.core_mode, retrieved, model=args.model)
-        host_path = output_dir / f"{args.operation}_{args.core_mode}_v2.cpp"
-        host_path.write_text(host_code)
+        host_result = host_gen.generate(args.operation, args.core_mode, retrieved, model=args.model)
 
+        # Write host code
+        host_path = output_dir / f"{args.operation}_{args.core_mode}_v2.cpp"
+        host_path.write_text(host_result["host_code"])
+
+        # Write CMakeLists.txt (from LLM or fallback template)
         cmake_path = output_dir / "CMakeLists.txt"
-        cmake_path.write_text(
-            f"cmake_minimum_required(VERSION 3.22)\nproject({args.operation}_{args.core_mode}_v2)\nadd_executable({args.operation}_{args.core_mode}_v2 {args.operation}_{args.core_mode}_v2.cpp)\n"
-        )
+        cmake_path.write_text(host_result["cmake"])
 
     if args.save_prompt:
         save_prompt(output_dir, system_prompt, user_prompt)

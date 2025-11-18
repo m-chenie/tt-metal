@@ -133,20 +133,111 @@ Expected output format:
 ```"""
 
 
+def build_host_system_prompt(op: str, core_mode: str, host_examples: List[Dict]) -> str:
+    """
+    Build system prompt specifically for host code generation.
+
+    Includes:
+    1. Canonical host code template showing correct structure
+    2. Complete host code examples
+    3. Host API signatures extracted from examples
+    """
+    from host_api_retriever import retrieve_host_api_signatures, format_host_api_section, create_host_template
+
+    op_desc = OPERATIONS[op]["description"]
+    op_cfg = OPERATIONS[op]
+    core_desc = CORE_MODES[core_mode]["description"]
+
+    parts = [
+        "You are an expert TT-Metal host code developer for Tenstorrent hardware.",
+        f"Target: {op} ({op_desc}), mode: {core_desc}.",
+        "Generate correct, modern TT-Metal host code following the canonical structure and examples.",
+        "",
+    ]
+
+    # Add canonical template first - shows correct headers and structure
+    template = create_host_template()
+    parts.append(template)
+    parts.append("")
+
+    # Retrieve and add host API signatures
+    api_signatures = retrieve_host_api_signatures(host_examples)
+    if api_signatures:
+        api_section = format_host_api_section(api_signatures)
+        parts.append(api_section)
+
+    # Add complete host code examples
+    if host_examples:
+        parts.append("## Complete Host Code Examples")
+        parts.append("Study these examples to understand the full workflow:\n")
+
+        for doc in host_examples[:2]:  # Limit to 2 complete examples
+            parts.append(f"### Example: {doc['path']}\n")
+            parts.append(f"```cpp\n{doc['chunk']}\n```\n")
+
+    # Add CMakeLists.txt examples
+    from retriever import retrieve_cmake_examples
+
+    cmake_examples = retrieve_cmake_examples(op)
+    if cmake_examples:
+        parts.append("## CMakeLists.txt Examples")
+        parts.append("Use these patterns for proper library linking:\n")
+
+        for doc in cmake_examples[:2]:  # Limit to 2 examples
+            parts.append(f"### Example: {doc['path']}\n")
+            parts.append(f"```cmake\n{doc['chunk']}\n```\n")
+
+    parts.append("CRITICAL REQUIREMENTS:")
+    parts.append("- Use ONLY angle bracket includes: `#include <tt-metalium/host_api.hpp>` NOT quotes")
+    parts.append("- Use `distributed::MeshDevice` NOT `Device`")
+    parts.append("- Use `distributed::MeshBuffer` NOT `Buffer`")
+    parts.append("- All distributed APIs require `distributed::` namespace prefix")
+    parts.append("- Follow the canonical template structure exactly")
+    parts.append("- CMakeLists.txt MUST include: find_package(TT-Metalium) and target_link_libraries(...TT::Metalium)")
+
+    return "\n\n".join(parts)
+
+
 def build_host_user_prompt(op: str, core_mode: str) -> str:
     op_desc = OPERATIONS[op]["description"]
     op_type = OPERATIONS[op].get("operation_type", "binary")
-    if op_type == "sfpu_chain":
-        cb_hint = "Configure CB_0 (V), CB_1 (vj), CB_2 (isat constant), CB_16 (output). Load a single isat tile into CB_2 once."
-    else:
-        cb_hint = "Configure circular buffers for kernels: CB_0, CB_1 inputs; CB_16 output."
 
-    return f"""Generate host code (single .cpp) for {op_desc} ({core_mode}-core).
+    # Build CB configuration hint based on operation type
+    if op_type == "sfpu_chain":
+        op_cfg = OPERATIONS[op]
+        inputs = op_cfg.get("inputs", [])
+        constants = op_cfg.get("constants", [])
+
+        if inputs and constants:
+            cb_hint = f"Configure CB_0 ({inputs[0]}), CB_1 ({inputs[1]}), CB_2 ({constants[0]} constant), CB_16 (output). Initialize CB_2 with the constant {constants[0]} value."
+        else:
+            cb_hint = "Configure CB_0, CB_1 for inputs, CB_16 for output."
+    else:
+        cb_hint = "Configure circular buffers: CB_0, CB_1 for inputs; CB_16 for output."
+
+    return f"""Generate complete host code (.cpp file) AND CMakeLists.txt for {op_desc} ({core_mode}-core).
 
 Requirements:
-- Include TT-Metal host headers and use distributed::MeshDevice mesh setup.
-- Create DRAM buffers for inputs/outputs.
+- Follow the canonical template structure EXACTLY
+- Use correct headers: `#include <tt-metalium/host_api.hpp>` with angle brackets
+- Use `distributed::MeshDevice::create_unit_mesh()` for device setup
+- Create DRAM buffers using `distributed::MeshBuffer::create()`
 - {cb_hint}
-- Compile and launch the three kernels (reader, compute, writer), set runtime args, and enqueue program.
-- Add simple validation against a CPU golden.
-Return only the code."""
+- Compile and launch the three kernels (reader, compute, writer) with SetRuntimeArgs
+- Enqueue program using `distributed::EnqueueMeshWorkload()`
+- Add CPU golden validation with PCC check
+- Use proper tilize/untilize for data conversion
+
+Output format - provide TWO code blocks:
+
+```cpp
+// HOST CODE: {op}_{core_mode}_v2.cpp
+[complete host code here]
+```
+
+```cmake
+# CMakeLists.txt
+[complete CMakeLists.txt with proper linking]
+```
+
+Ensure CMakeLists.txt includes find_package(TT-Metalium) and target_link_libraries with TT::Metalium."""

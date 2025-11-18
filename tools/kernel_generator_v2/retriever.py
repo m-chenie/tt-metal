@@ -168,3 +168,76 @@ def retrieve_smart(query: str, operation: str, core_mode: str = "", kernel_type:
                     seen_paths.add(doc["path"])
 
     return results[:TOP_K]
+
+
+def retrieve_host_examples(operation: str) -> List[Dict[str, Any]]:
+    """
+    Retrieve complete host code examples for a given operation.
+
+    Returns canonical host examples first, then searches for similar host code.
+    """
+    results = []
+    seen_paths = set()
+
+    # Determine operation type for canonical lookup
+    op_type = OPERATIONS.get(operation, {}).get("operation_type", "binary")
+
+    # Load canonical host example for this operation type
+    canonical_map = CANONICAL_EXAMPLES.get(op_type, {})
+    if "host" in canonical_map:
+        canonical_path = canonical_map["host"]
+        canonical = _load_canonical_example(canonical_path)
+        if canonical:
+            results.append(canonical)
+            seen_paths.add(canonical["path"])
+
+    # Search for other host examples from similar operations
+    docs = load_index()
+    host_docs = [d for d in docs if d["meta"].get("kind") == "host" and d["path"] not in seen_paths]
+
+    if host_docs:
+        # Prioritize same operation type
+        query = f"{operation} {op_type} host main distributed MeshDevice"
+        scored = bm25(query, host_docs)
+
+        for score, doc in scored[:2]:  # Top 2 additional host examples
+            if doc["path"] not in seen_paths:
+                results.append(doc)
+                seen_paths.add(doc["path"])
+
+    return results
+
+
+def retrieve_cmake_examples(operation: str) -> List[Dict[str, Any]]:
+    """
+    Retrieve CMakeLists.txt examples from canonical examples.
+
+    Returns CMakeLists.txt files from the same directories as canonical host examples.
+    """
+    results = []
+
+    # Determine operation type for canonical lookup
+    op_type = OPERATIONS.get(operation, {}).get("operation_type", "binary")
+
+    # Load CMakeLists.txt from canonical example directory
+    canonical_map = CANONICAL_EXAMPLES.get(op_type, {})
+    if "host" in canonical_map:
+        host_rel_path = canonical_map["host"]  # Already relative to TT_METAL_HOME
+        # CMakeLists.txt should be in the same directory as the host file
+        cmake_rel_path = str(Path(host_rel_path).parent / "CMakeLists.txt")
+
+        cmake_doc = _load_canonical_example(cmake_rel_path)
+        if cmake_doc:
+            results.append(cmake_doc)
+
+    # Also load from other operation types as additional examples
+    for other_op_type, examples in CANONICAL_EXAMPLES.items():
+        if other_op_type != op_type and "host" in examples:
+            host_rel_path = examples["host"]  # Already relative to TT_METAL_HOME
+            cmake_rel_path = str(Path(host_rel_path).parent / "CMakeLists.txt")
+
+            cmake_doc = _load_canonical_example(cmake_rel_path)
+            if cmake_doc and len(results) < 2:  # Limit to 2 examples
+                results.append(cmake_doc)
+
+    return results
