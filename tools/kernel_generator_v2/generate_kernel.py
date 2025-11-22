@@ -22,7 +22,12 @@ from config import (
     MAX_TOKENS,
 )
 from retriever import retrieve, retrieve_smart
-from prompt_builder import build_system_prompt, build_kernel_user_prompt
+from prompt_builder import (
+    build_system_prompt,
+    build_kernel_user_prompt,
+    build_host_system_prompt,
+    build_host_user_prompt,
+)
 from host_code_generator import HostCodeGenerator
 
 # Note: Canonical examples are now handled by retrieve_smart()
@@ -171,11 +176,17 @@ def write_kernels(output_dir: Path, op: str, core_mode: str, blocks: Dict[str, s
     (kernels_dir / "dataflow" / writer_name).write_text(blocks.get("writer", ""))
 
 
-def save_prompt(output_dir: Path, system_prompt: str, user_prompt: str):
+def save_prompt(
+    output_dir: Path, system_prompt: str, user_prompt: str, host_system_prompt: str = None, host_user_prompt: str = None
+):
+    """Save prompts to debug file. If host prompts are provided, append them as well."""
+    content = f"# Prompt Debug\n\n## Kernel Generation\n\n### System\n```\n{system_prompt}\n```\n\n### User\n```\n{user_prompt}\n```\n"
+
+    if host_system_prompt and host_user_prompt:
+        content += f"\n\n## Host Code Generation\n\n### System\n```\n{host_system_prompt}\n```\n\n### User\n```\n{host_user_prompt}\n```\n"
+
     debug_path = output_dir / "prompt_debug.md"
-    debug_path.write_text(
-        f"# Prompt Debug\n\n## System\n```\n{system_prompt}\n```\n\n## User\n```\n{user_prompt}\n```\n"
-    )
+    debug_path.write_text(content)
 
 
 def main(selected_args=None):
@@ -253,9 +264,19 @@ def main(selected_args=None):
 
     write_kernels(output_dir, args.operation, args.core_mode, blocks)
 
+    host_system_prompt = None
+    host_user_prompt = None
+
     if args.generate_host:
         logger.info("Generating host code...")
         host_result = host_gen.generate(args.operation, args.core_mode, retrieved, model=args.model)
+
+        # Capture the prompts used for host generation
+        from retriever import retrieve_host_examples
+
+        host_examples = retrieve_host_examples(args.operation)
+        host_system_prompt = build_host_system_prompt(args.operation, args.core_mode, host_examples)
+        host_user_prompt = build_host_user_prompt(args.operation, args.core_mode)
 
         # Write host code
         host_path = output_dir / f"{args.operation}_{args.core_mode}_v2.cpp"
@@ -265,8 +286,30 @@ def main(selected_args=None):
         cmake_path = output_dir / "CMakeLists.txt"
         cmake_path.write_text(host_result["cmake"])
 
+    # Always save original prompts (even without --save-prompt) for iteration to use
+    original_prompt_file = output_dir / "original_generation_prompt.md"
+    original_prompt_file.write_text(
+        f"# Original Generation Prompt\n\n## Kernel Generation\n\n### System\n```\n{system_prompt}\n```\n\n### User\n```\n{user_prompt}\n```\n"
+        + (
+            f"\n\n## Host Code Generation\n\n### System\n```\n{host_system_prompt}\n```\n\n### User\n```\n{host_user_prompt}\n```\n"
+            if host_system_prompt and host_user_prompt
+            else ""
+        )
+    )
+
+    # Always save original prompts (even without --save-prompt) for iteration to use
+    original_prompt_file = output_dir / "original_generation_prompt.md"
+    original_prompt_file.write_text(
+        f"# Original Generation Prompt\n\n## Kernel Generation\n\n### System\n```\n{system_prompt}\n```\n\n### User\n```\n{user_prompt}\n```\n"
+        + (
+            f"\n\n## Host Code Generation\n\n### System\n```\n{host_system_prompt}\n```\n\n### User\n```\n{host_user_prompt}\n```\n"
+            if host_system_prompt and host_user_prompt
+            else ""
+        )
+    )
+
     if args.save_prompt:
-        save_prompt(output_dir, system_prompt, user_prompt)
+        save_prompt(output_dir, system_prompt, user_prompt, host_system_prompt, host_user_prompt)
 
     logger.info(f"Done. Output at {output_dir}")
 

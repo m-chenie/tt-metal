@@ -206,7 +206,12 @@ def detect_error_type(error_summary: str) -> str:
 
 
 def build_refinement_prompt(
-    current_files: Dict[str, str], error_summary: str, error_type: str, iteration: int, example_path: Path = None
+    current_files: Dict[str, str],
+    error_summary: str,
+    error_type: str,
+    iteration: int,
+    example_path: Path = None,
+    previous_prompt: str = None,
 ) -> Tuple[str, str]:
     """
     Build system and user prompts for fixing compilation errors.
@@ -216,163 +221,93 @@ def build_refinement_prompt(
         error_summary: Parsed error summary
         error_type: Primary error type (linker/syntax/etc)
         iteration: Current iteration number
-        example_path: Path to example (used to infer operation name)
+        example_path: Path to example (used to load original prompt)
+        previous_prompt: The prompt from the previous iteration (if iteration > 1)
 
     Returns:
         (system_prompt, user_prompt)
     """
-    # Get host API context
-    host_template = create_host_template()
-
-    # Infer operation from example path if possible, otherwise use generic "binary"
-    operation = "binary"  # default fallback
-    if example_path:
-        # Extract operation name from path like "diode_equation_single_core_v2_generated"
-        path_name = example_path.name
-        # Try to match known operations from the name
-        for known_op in ["add", "sub", "mul", "div", "exp", "log", "sqrt", "diode_equation"]:
-            if known_op in path_name.lower():
-                operation = known_op
-                break
-
-    host_examples = retrieve_host_examples(operation)
-
-    # Format host examples for display
-    host_examples_text = ""
-    for i, example in enumerate(host_examples[:2], 1):  # Show top 2 examples
-        host_examples_text += f"\n### Example {i} ({example.get('path', 'unknown')})\n"
-        host_examples_text += f"```cpp\n{example.get('chunk', '')[:2000]}\n```\n"
-
-    host_api_signatures = retrieve_host_api_signatures(host_examples)
+    # For iteration 1, load the original generation prompt
+    # For iteration N > 1, use the previous refinement prompt
+    context_prompt = ""
+    if iteration == 1 and example_path:
+        original_prompt_file = example_path / "original_generation_prompt.md"
+        if original_prompt_file.exists():
+            context_prompt = original_prompt_file.read_text()
+            logger.info("Loaded original generation prompt for iteration 1")
+    elif previous_prompt:
+        context_prompt = previous_prompt
+        logger.info(f"Using previous iteration prompt for iteration {iteration}")
 
     system_prompt = f"""You are an expert TT-Metal developer fixing compilation errors.
 
-This is iteration {iteration} of debugging generated code that failed to compile.
+This is iteration {iteration} of debugging.
 
-CANONICAL HOST CODE TEMPLATE:
-```cpp
-{host_template}
-```
+{'='*80}
+PREVIOUS REQUEST (what you were asked to do):
+{'='*80}
+{context_prompt if context_prompt else "Not available - this is the first iteration"}
 
-HOST API EXAMPLES:
-{host_examples_text}
-
-HOST API SIGNATURES:
-{host_api_signatures}
-
-CURRENT CODE:
+{'='*80}
+YOUR PREVIOUS OUTPUT (the code you generated):
+{'='*80}
 """
 
-    # Always show ALL code files regardless of error type
-    # This provides complete context to the LLM
-
-    # Show kernels first
+    # Show ALL the code that was generated previously
     for key in ["compute", "reader", "writer"]:
         if key in current_files:
             system_prompt += f"\n## {key.title()} Kernel\n"
-            system_prompt += f"```cpp\n{current_files[key]}\n```\n\n"
+            system_prompt += f"```cpp\n{current_files[key]}\n```\n"
 
-    # Show host code
     if "host_code" in current_files:
         system_prompt += "\n## Host Code\n"
-        system_prompt += f"```cpp\n{current_files['host_code']}\n```\n\n"
+        system_prompt += f"```cpp\n{current_files['host_code']}\n```\n"
 
-    # Show CMakeLists.txt
     system_prompt += "\n## CMakeLists.txt\n"
-    system_prompt += f"```cmake\n{current_files.get('cmake', 'N/A')}\n```\n\n"
+    system_prompt += f"```cmake\n{current_files.get('cmake', 'N/A')}\n```\n"
 
-    system_prompt += (
-        """
-COMPILATION ERRORS:
+    system_prompt += f"""
+{'='*80}
+COMPILATION ERRORS (what went wrong):
+{'='*80}
+```
+{error_summary}
 ```
 """
-        + error_summary
-        + """
+
+    # Simple, direct user prompt
+    user_prompt = f"""The code you generated in the previous iteration failed to compile with the errors shown above.
+
+Please fix ALL the errors and provide the complete, corrected code.
+
+Output format - provide ALL files with fixes applied:
+
+```cpp
+// COMPUTE KERNEL
+[complete corrected compute kernel code]
 ```
 
-Your task: Fix the errors and provide corrected code.
-"""
-    )
+```cpp
+// READER KERNEL
+[complete corrected reader kernel code]
+```
 
-    # User prompt varies by error type
-    if error_type == "cmake":
-        user_prompt = """CMake configuration error.
+```cpp
+// WRITER KERNEL
+[complete corrected writer kernel code]
+```
 
-FIX REQUIRED:
-1. Replace the CMakeLists.txt with correct content
-2. MUST include: find_package(TT-Metalium REQUIRED)
-3. MUST include: target_link_libraries(...PROJECT_NAME... PUBLIC TT::Metalium)
-4. Do NOT use find_package(OpenMPI) or any MPI-related commands
-5. Follow the canonical CMakeLists.txt pattern
+```cpp
+// HOST CODE
+[complete corrected host code]
+```
 
-CRITICAL: Provide COMPLETE, FULL code files - not just the changed sections.
-Include ALL includes, ALL functions, ALL code in each file.
-Provide: compute kernel (full), reader kernel (full), writer kernel (full), host code (full), cmake (full).
-"""
+```cmake
+# CMakeLists.txt
+[complete corrected cmake file]
+```
 
-    elif error_type == "linker":
-        user_prompt = """The code compiles but fails at link time due to missing library references.
-
-FIX REQUIRED:
-1. Update CMakeLists.txt to link against required libraries
-2. Ensure target_link_libraries includes TT::Metalium
-3. Check if find_package(TT-Metalium REQUIRED) is present
-
-CRITICAL: Provide COMPLETE, FULL code files - not just the changed sections.
-Include ALL includes, ALL functions, ALL code in each file.
-Provide: compute kernel (full), reader kernel (full), writer kernel (full), host code (full), cmake (full).
-"""
-
-    elif error_type == "includes":
-        user_prompt = """Missing header files.
-
-FIX REQUIRED:
-1. Add correct #include statements using angle brackets: <tt-metalium/...>
-2. Do NOT use quotes for TT-Metal headers
-3. Ensure all includes exist in the codebase
-
-CRITICAL: Provide COMPLETE, FULL code files - not just the changed sections.
-Include ALL includes, ALL functions, ALL code in each file.
-Provide: compute kernel (full), reader kernel (full), writer kernel (full), host code (full), cmake (full).
-"""
-
-    elif error_type == "syntax":
-        user_prompt = f"""Compilation errors in the code.
-
-ERROR TYPE: {error_type}
-
-FIX REQUIRED:
-1. Fix syntax errors or API signature mismatches
-2. Use correct TT-Metal API functions (check the error messages)
-3. Ensure proper namespace usage (distributed::, tt::, etc)
-
-CRITICAL: Provide COMPLETE, FULL code files - not just the changed sections.
-Include ALL includes, ALL functions, ALL code in each file.
-Provide: compute kernel (full), reader kernel (full), writer kernel (full), host code (full), cmake (full).
-"""
-
-    elif error_type == "api":
-        user_prompt = """API usage errors detected.
-
-FIX REQUIRED:
-1. Fix incorrect API function calls
-2. Match function signatures correctly
-3. Use correct argument types
-
-CRITICAL: Provide COMPLETE, FULL code files - not just the changed sections.
-Include ALL includes, ALL functions, ALL code in each file.
-Provide: compute kernel (full), reader kernel (full), writer kernel (full), host code (full), cmake (full).
-"""
-
-    else:  # unknown
-        user_prompt = """Unknown compilation failure.
-
-Analyze the error output and fix the issues.
-
-CRITICAL: Provide COMPLETE, FULL code files - not just the changed sections.
-Include ALL includes, ALL functions, ALL code in each file.
-Provide: compute kernel (full), reader kernel (full), writer kernel (full), host code (full), cmake (full).
-"""
+CRITICAL: Provide COMPLETE files, not just the changed sections."""
 
     return system_prompt, user_prompt
 
@@ -399,6 +334,9 @@ def iterative_refine(client: Groq, args):
 
     logger.info(f"Starting iterative refinement on: {example_path}")
     logger.info(f"Max iterations: {args.max_iterations}")
+
+    # Track the previous iteration's prompt for context
+    previous_iteration_prompt = None
 
     # Initial compilation attempt
     for iteration in range(1, args.max_iterations + 1):
@@ -435,14 +373,15 @@ def iterative_refine(client: Groq, args):
 
         # Build refinement prompt
         system_prompt, user_prompt = build_refinement_prompt(
-            current_files, result["error_summary"], error_type, iteration, example_path
+            current_files, result["error_summary"], error_type, iteration, example_path, previous_iteration_prompt
         )
+
+        # Save the current prompt for use in the next iteration
+        current_iteration_prompt = f"## System\n```\n{system_prompt}\n```\n\n## User\n```\n{user_prompt}\n```\n"
 
         if args.save_prompt:
             prompt_file = example_path / f"refinement_iteration_{iteration}.md"
-            prompt_file.write_text(
-                f"# Iteration {iteration}\n\n## System\n```\n{system_prompt}\n```\n\n## User\n```\n{user_prompt}\n```\n"
-            )
+            prompt_file.write_text(f"# Iteration {iteration}\n\n{current_iteration_prompt}")
             logger.info(f"Saved refinement prompt to: {prompt_file}")
 
         # Call LLM to fix errors
@@ -467,6 +406,9 @@ def iterative_refine(client: Groq, args):
             # Apply fixes
             apply_fixes(example_path, content, error_type, current_files)
             logger.info("Applied fixes from LLM")
+
+            # Save this iteration's full prompt for the next iteration
+            previous_iteration_prompt = current_iteration_prompt
 
         except Exception as e:
             logger.error(f"LLM call failed: {e}")

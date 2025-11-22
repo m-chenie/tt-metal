@@ -36,16 +36,19 @@ void MAIN {
     //
     // Fused operations
     //
-    // Compute the division of the tile using the SFPU.
+    // Compute the division of V by vj using the SFPU.
     div_binary_tile_init();
     div_binary_tile(0, 1, 0);  // V/vj
 
+    // Compute the exponentiation of the result using the SFPU.
     exp_tile_init();
     exp_tile(0);  // exp(V/vj)
 
+    // Subtract 1 from the result using the SFPU.
     sub_unary_tile_init();
     sub_unary_tile(0, 1);  // exp(V/vj) - 1
 
+    // Multiply the result by isat using the SFPU.
     mul_binary_tile_init();
     mul_binary_tile(0, 2, 0);  // isat * (exp(V/vj) - 1)
 
