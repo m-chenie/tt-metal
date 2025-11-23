@@ -52,7 +52,6 @@ def parse_args():
 
     # Arguments for initial generation
     ap.add_argument("--core-mode", choices=list(CORE_MODES.keys()), help="Core mode (required with --operation)")
-    ap.add_argument("--generate-host", action="store_true", help="Also generate host code")
     ap.add_argument("--output", type=str, help="Optional output dir (defaults under programming_examples)")
 
     # Arguments for iteration
@@ -60,7 +59,8 @@ def parse_args():
     ap.add_argument("--max-iterations", type=int, default=5, help="Maximum refinement iterations (default: 5)")
 
     # Common arguments
-    ap.add_argument("--model", default=MODEL_DEFAULT)
+    ap.add_argument("--provider", choices=["groq", "openai"], default="groq", help="LLM provider (default: groq)")
+    ap.add_argument("--model", default=MODEL_DEFAULT, help="Model name (provider-specific)")
     ap.add_argument("--save-prompt", action="store_true", help="Save assembled prompts to the output dir")
 
     args = ap.parse_args()
@@ -192,11 +192,32 @@ def save_prompt(
 def main(selected_args=None):
     args = selected_args or parse_args()
 
-    api_key = os.environ.get("GROQ_API_KEY") or os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        raise SystemExit("Set GROQ_API_KEY or OPENAI_API_KEY")
+    # Initialize LLM client based on provider
+    if args.provider == "groq":
+        from groq import Groq
 
-    client = Groq(api_key=api_key)
+        api_key = os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            raise SystemExit("Set GROQ_API_KEY environment variable for Groq provider")
+        client = Groq(api_key=api_key)
+        if args.model == MODEL_DEFAULT:  # If using default, keep it for Groq
+            model = args.model
+        else:
+            model = args.model
+    elif args.provider == "openai":
+        from openai import OpenAI
+
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            raise SystemExit("Set OPENAI_API_KEY environment variable for OpenAI provider")
+        client = OpenAI(api_key=api_key)
+        # Default to GPT-4 for OpenAI if no model specified
+        if args.model == MODEL_DEFAULT:  # User didn't override model
+            model = "gpt-4o-2024-08-06"  # GPT-4o is the latest and best
+        else:
+            model = args.model
+    else:
+        raise SystemExit(f"Unknown provider: {args.provider}")
 
     # Route to iteration mode if --iterate flag is set
     if args.iterate:
@@ -244,9 +265,9 @@ def main(selected_args=None):
     system_prompt = build_system_prompt(args.operation, args.core_mode, retrieved)
     user_prompt = build_kernel_user_prompt(args.operation, args.core_mode)
 
-    logger.info("Calling LLM for kernels...")
+    logger.info(f"Calling LLM for kernels (provider={args.provider}, model={model})...")
     resp = client.chat.completions.create(
-        model=args.model,
+        model=model,
         messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
         temperature=TEMPERATURE,
         max_tokens=MAX_TOKENS,
@@ -264,48 +285,30 @@ def main(selected_args=None):
 
     write_kernels(output_dir, args.operation, args.core_mode, blocks)
 
-    host_system_prompt = None
-    host_user_prompt = None
+    # Always generate host code
+    logger.info("Generating host code...")
+    host_result = host_gen.generate(args.operation, args.core_mode, retrieved, model=model)
 
-    if args.generate_host:
-        logger.info("Generating host code...")
-        host_result = host_gen.generate(args.operation, args.core_mode, retrieved, model=args.model)
+    # Capture the prompts used for host generation
+    from retriever import retrieve_host_examples
 
-        # Capture the prompts used for host generation
-        from retriever import retrieve_host_examples
+    host_examples = retrieve_host_examples(args.operation)
+    host_system_prompt = build_host_system_prompt(args.operation, args.core_mode, host_examples)
+    host_user_prompt = build_host_user_prompt(args.operation, args.core_mode)
 
-        host_examples = retrieve_host_examples(args.operation)
-        host_system_prompt = build_host_system_prompt(args.operation, args.core_mode, host_examples)
-        host_user_prompt = build_host_user_prompt(args.operation, args.core_mode)
+    # Write host code
+    host_path = output_dir / f"{args.operation}_{args.core_mode}_v2.cpp"
+    host_path.write_text(host_result["host_code"])
 
-        # Write host code
-        host_path = output_dir / f"{args.operation}_{args.core_mode}_v2.cpp"
-        host_path.write_text(host_result["host_code"])
+    # Write CMakeLists.txt (from LLM or fallback template)
+    cmake_path = output_dir / "CMakeLists.txt"
+    cmake_path.write_text(host_result["cmake"])
 
-        # Write CMakeLists.txt (from LLM or fallback template)
-        cmake_path = output_dir / "CMakeLists.txt"
-        cmake_path.write_text(host_result["cmake"])
-
-    # Always save original prompts (even without --save-prompt) for iteration to use
+    # Always save original prompts for iteration to use
     original_prompt_file = output_dir / "original_generation_prompt.md"
     original_prompt_file.write_text(
         f"# Original Generation Prompt\n\n## Kernel Generation\n\n### System\n```\n{system_prompt}\n```\n\n### User\n```\n{user_prompt}\n```\n"
-        + (
-            f"\n\n## Host Code Generation\n\n### System\n```\n{host_system_prompt}\n```\n\n### User\n```\n{host_user_prompt}\n```\n"
-            if host_system_prompt and host_user_prompt
-            else ""
-        )
-    )
-
-    # Always save original prompts (even without --save-prompt) for iteration to use
-    original_prompt_file = output_dir / "original_generation_prompt.md"
-    original_prompt_file.write_text(
-        f"# Original Generation Prompt\n\n## Kernel Generation\n\n### System\n```\n{system_prompt}\n```\n\n### User\n```\n{user_prompt}\n```\n"
-        + (
-            f"\n\n## Host Code Generation\n\n### System\n```\n{host_system_prompt}\n```\n\n### User\n```\n{host_user_prompt}\n```\n"
-            if host_system_prompt and host_user_prompt
-            else ""
-        )
+        + f"\n\n## Host Code Generation\n\n### System\n```\n{host_system_prompt}\n```\n\n### User\n```\n{host_user_prompt}\n```\n"
     )
 
     if args.save_prompt:

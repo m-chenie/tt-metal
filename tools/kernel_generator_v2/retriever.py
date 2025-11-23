@@ -127,6 +127,20 @@ def retrieve_smart(query: str, operation: str, core_mode: str = "", kernel_type:
             results.append(canonical)
             seen_paths.add(canonical["path"])
 
+    # Pass 1b: If operation has multiple inputs, also include eltwise_binary example
+    # to show the multi-input TensorAccessor pattern (for reader kernels)
+    op_info = OPERATIONS.get(operation, {})
+    num_inputs = len(op_info.get("inputs", [])) + len(op_info.get("constants", []))
+    if num_inputs > 1 and op_type != "binary" and kernel_type == "reader":
+        binary_map = CANONICAL_EXAMPLES.get("binary", {})
+        if kernel_type in binary_map:
+            binary_path = binary_map[kernel_type]
+            if binary_path not in seen_paths:
+                binary_example = _load_canonical_example(binary_path)
+                if binary_example:
+                    results.append(binary_example)
+                    seen_paths.add(binary_example["path"])
+
     # Pass 2: BM25 with exact filters (operation_type + kernel_type)
     exact_filters = {"operation": op_type}
     if kernel_type:
@@ -190,6 +204,20 @@ def retrieve_host_examples(operation: str) -> List[Dict[str, Any]]:
         if canonical:
             results.append(canonical)
             seen_paths.add(canonical["path"])
+
+    # If operation has multiple inputs, also include eltwise_binary example
+    # to show the multi-input TensorAccessor pattern
+    op_info = OPERATIONS.get(operation, {})
+    num_inputs = len(op_info.get("inputs", [])) + len(op_info.get("constants", []))
+    if num_inputs > 1 and op_type != "binary":  # Don't duplicate if already binary
+        binary_map = CANONICAL_EXAMPLES.get("binary", {})
+        if "host" in binary_map:
+            binary_path = binary_map["host"]
+            if binary_path not in seen_paths:
+                binary_example = _load_canonical_example(binary_path)
+                if binary_example:
+                    results.append(binary_example)
+                    seen_paths.add(binary_example["path"])
 
     # Search for other host examples from similar operations
     docs = load_index()

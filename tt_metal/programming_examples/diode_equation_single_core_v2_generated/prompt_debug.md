@@ -1,14 +1,3 @@
-# Iteration 1
-
-## System
-```
-You are an expert TT-Metal developer fixing compilation errors.
-
-This is iteration 1 of debugging.
-
-================================================================================
-PREVIOUS REQUEST (what you were asked to do):
-================================================================================
 # Prompt Debug
 
 ## Kernel Generation
@@ -476,9 +465,9 @@ Generate TT-Metal kernels for diode current equation (I = isat × (exp(V/vj) - 1
 Requirements:
 - Emit exactly three separate code blocks in your response
 - Label each block clearly: COMPUTE, READER, WRITER
-- Circular buffers: CB_0 for V, CB_1 for vj, CB_2 for constant isat, CB_16 for output
-- Compute kernel: Implement the formula: I = isat × (exp(V/vj) - 1). Mathematical steps: divide V by vj, exponentiate result, subtract 1, multiply by isat. Use appropriate SFPU operations from the examples. Follow the pattern: initialize operations, wait for inputs, acquire registers, perform computation, pack result, release registers
-- Reader kernel: Read V and vj tiles from DRAM. Initialize CB_2 with the constant isat value. Use noc_async_read with barriers
+- Use standard circular buffer layout: CB_0/CB_1 for inputs, CB_16 for output
+- Compute kernel: Implement the operation: I = isat × (exp(V/vj) - 1). Use appropriate SFPU operations from the examples. Follow the pattern: initialize operations, wait for inputs, acquire registers, perform computation, pack result, release registers
+- Reader kernel: Read input tiles from DRAM using NOC async operations. Use noc_async_read with barriers
 - Writer kernel: Write output tiles from CB_16 to DRAM using noc_async_write with barriers
 - Study the provided examples to identify the correct API functions and usage patterns
 - Follow TT-Metal conventions: cb_wait/reserve/push/pop discipline, NOC barriers, proper includes
@@ -850,30 +839,200 @@ int main() {
 ```
 
 
-### Example: /home/m48chen/tt-metal/tt_metal/programming_examples/tests/mesh_device_test.cpp
+### Example: /home/m48chen/tt-metal/tt_metal/programming_examples/eltwise_binary/eltwise_binary.cpp
 
 
 ```cpp
 // SPDX-FileCopyrightText: © 2025 Tenstorrent AI ULC
+//
 // SPDX-License-Identifier: Apache-2.0
 
+#include <tt-metalium/core_coord.hpp>
+#include <tt-metalium/host_api.hpp>
+#include <tt-metalium/device.hpp>
+#include <tt-metalium/bfloat16.hpp>
+#include <tt-metalium/tensor_accessor_args.hpp>
 #include <tt-metalium/distributed.hpp>
-#include <tt-metalium/system_mesh.hpp>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <random>
+#include <string_view>
+#include <vector>
+#include "tt-metalium/base_types.hpp"
 
 using namespace tt::tt_metal;
+#ifndef OVERRIDE_KERNEL_PREFIX
+#define OVERRIDE_KERNEL_PREFIX ""
+#endif
+int main(int /*argc*/, char** /*argv*/) {
+    bool pass = true;
 
-int main() {
-    // Make sure creating a mesh device with the full system mesh shape works. This is specifically meant to catch
-    // regressions such as https://github.com/tenstorrent/tt-metal/issues/30899. Ideally it should be ran against
-    // a single host context (requires building `--without-distributed`) and the MPI one.
-    auto mesh_shape = distributed::SystemMesh::instance().shape();
-    auto mesh_device_config = distributed::MeshDeviceConfig(mesh_shape);
-    std::shared_ptr<distributed::MeshDevice> mesh_device = distributed::MeshDevice::create(mesh_device_config);
+    // clang-format off
+    try {
+        // Create a 1x1 mesh on device 0. The same API scales to multi-device meshes.
+        constexpr int device_id = 0;
+        std::shared_ptr<distributed::MeshDevice> mesh_device = distributed::MeshDevice::create_unit_mesh(device_id);
 
-    // Close the device
-    if (!mesh_device->close()) {
-        return 1;
+        // Submit work via a mesh command queue: data uploads/downloads and program execution.
+        distributed::MeshCommandQueue& cq = mesh_device->mesh_command_queue();
+        // A program is a collection of kernels. Note that unlike OpenCL/CUDA where every core must run the
+        // same kernel at a given time. Metalium allows you to run different kernels on different cores
+        // simultaneously.
+        distributed::MeshWorkload workload;
+        // Execute across this device range. Here it spans the whole mesh (1x1).
+        auto device_range = distributed::MeshCoordinateRange(mesh_device->shape());
+        Program program = CreateProgram();
+
+        // This example program will only use 1 Tensix core. So we set the core to {0, 0}.
+        constexpr CoreCoord core = {0, 0};
+
+        // Define some constants that will be used throughout the program.
+        // * Processing 64 tiles
+        // * Each tile is 32x32 elements
+        // * Each element is a bfloat16 (2 bytes)
+        constexpr uint32_t n_tiles = 64;
+        constexpr uint32_t elements_per_tile = tt::constants::TILE_WIDTH * tt::constants::TILE_HEIGHT;
+        constexpr uint32_t tile_size_bytes = sizeof(bfloat16) * elements_per_tile;
+
+        // Create 3 DRAM-backed mesh buffers: two inputs (src0, src1) and one output (dst).
+        distributed::DeviceLocalBufferConfig dram_config{
+            .page_size = tile_size_bytes, //The page size of the buffer in bytes. Unlike the `loopback` example, we
+                                          // need the page size to be the same as the tile size for a large portion of the NoC transfer APIs to work.
+            .buffer_type = BufferType::DRAM}; // This is a DRAM buffer.
+        distributed::ReplicatedBufferConfig buffer_config{
+            .size = n_tiles * tile_size_bytes // Total bytes per device (replicated across the mesh).
+        };
+
+        auto src0_dram_buffer = distributed::MeshBuffer::create(buffer_config, dram_config, mesh_device.get());
+        auto src1_dram_buffer = distributed::MeshBuffer::create(buffer_config, dram_config, mesh_device.get());
+        auto dst_dram_buffer = distributed::MeshBuffer::create(buffer_config, dram_config, mesh_device.get());
+        // Each handle represents a mesh-wide replicated buffer; on a unit mesh this is a single device allocation.
+
+        // Initialize the input buffers with random data. For this example, src0 is a random vector of bfloat16 values
+        std::mt19937 rng(std::random_device{}());
+        std::uniform_real_distribution<float> distribution(0.0f, 1.0f);
+        std::vector<bfloat16> a_data(elements_per_tile * n_tiles);
+        for(auto& val : a_data) {
+            val = bfloat16(distribution(rng));
+        }
+
+        // ... and src1 is a vector of bfloat16 values initialized to -1.0f.
+        constexpr float val_to_add = -1.0f;
+        std::vector<bfloat16> b_data(elements_per_tile * n_tiles, bfloat16(val_to_add));
+
+        // Upload host vectors into the mesh buffers.
+        distributed::EnqueueWriteMeshBuffer(cq, src0_dram_buffer, a_data, false);
+        distributed::EnqueueWriteMeshBuffer(cq, src1_dram_buffer, b_data, false);
+
+        // Create 3 circular buffers. Think them like pipes moving data from one core to another. cb_src0 and cb_src1 are used to
+        // move data from the reader kernel to the compute kernel. cb_dst is used to move data from the compute kernel to the writer
+        // kernel. Each circular buffer is made up of 2 tiles. Thus when one tile is pushed and being used by the receiving end, the
+        // sending end can get the next piece of data ready to be pushed. Overlapping the operations. Leading to better performance.
+        // However there is a trade off, The more tiles in a circular buffer, the more memory is used. And Circular buffers are
+        // backed by L1(SRAM) memory and L1 is a precious resource.
+        // The hardware supports up to 32 circular buffers and they all act the same.
+        constexpr uint32_t tiles_per_cb = 2;
+        tt::CBIndex src0_cb_index = tt::CBIndex::c_0;
+        CreateCircularBuffer(program, core, CircularBufferConfig(
+            /*total_size=*/tiles_per_cb * tile_size_bytes,                    // The total size of the circular buffer in bytes
+            /*data_format_spec=*/{{src0_cb_index, tt::DataFormat::Float16_b}})// The circular buffer index and data format it'll hold
+            .set_page_size(src0_cb_index, tile_size_bytes));                  // Since we will be sending one tile at a time, we set
+                                                                              // the page size to the tile size (and thus
+                                                                              // total_size / page_size = tiles_per is the number of
+                                                                              // entries in the circular buffer)
+        tt::CBIndex src1_cb_index = tt::CBIndex::c_1;
+        CreateCircularBuffer(program, core, CircularBufferConfig(
+            /*total_size=*/tiles_per_cb * tile_size_bytes,
+            /*data_format_spec=*/{{src1_cb_index, tt::DataFormat::Float16_b}})
+            .set_page_size(src1_cb_index, tile_size_bytes));
+        tt::CBIndex dst_cb_index = tt::CBIndex::c_16;
+        CreateCircularBuffer(program, core, CircularBufferConfig(
+            /*total_size=*/tiles_per_cb * tile_size_bytes,
+            /*data_format_spec=*/{{dst_cb_index, tt::DataFormat::Float16_b}})
+            .set_page_size(dst_cb_index, tile_size_bytes));
+
+        // Create the reader, writer and compute kernels. The kernels do the following:
+        // * Reader: Reads data from the DRAM buffer and pushes it into the circular buffer.
+        // * Compute: Waits for data to be available in the circular buffer, pops it, adds the two inputs together and pushes the result
+        //   into the output circular buffer.
+        // * Writer: Waits for data to be available in the output circular buffer, pops it and writes it back into DRAM.
+        // These kernels work together to form a pipeline. The reader reads data from the DRAM buffer and makes them available in the
+        // compute kernel. The compute kernel does math and pushes the result into the writer kernel. The writer kernel writes the result
+        // back to DRAM.
+        std::vector<uint32_t> reader_compile_time_args;
+        TensorAccessorArgs(*src0_dram_buffer).append_to(reader_compile_time_args);
+        TensorAccessorArgs(*src1_dram_buffer).append_to(reader_compile_time_args);
+        auto reader = CreateKernel(
+            program,
+            OVERRIDE_KERNEL_PREFIX "eltwise_binary/kernels/dataflow/read_tiles.cpp",
+            core,
+            DataMovementConfig{.processor = DataMovementProcessor::RISCV_0, .noc = NOC::RISCV_0_default, .compile_args = reader_compile_time_args});
+        std::vector<uint32_t> writer_compile_time_args;
+        TensorAccessorArgs(*dst_dram_buffer).append_to(writer_compile_time_args);
+        auto writer = CreateKernel(
+            program,
+            OVERRIDE_KERNEL_PREFIX "eltwise_binary/kernels/dataflow/write_tile.cpp",
+            core,
+            DataMovementConfig{.processor = DataMovementProcessor::RISCV_1, .noc = NOC::RISCV_1_default, .compile_args = writer_compile_time_args});
+        auto compute = CreateKernel(
+            program,
+            OVERRIDE_KERNEL_PREFIX "eltwise_binary/kernels/compute/tiles_add.cpp",
+            core,
+            ComputeConfig{.math_fidelity = MathFidelity::HiFi4});   // There's different math fidelity modes (for the tensor engine)
+                                                                // that trade off performance for accuracy. HiFi4 is the most accurate
+                                                                // mode. The other modes are HiFi3, HiFi2, HiFi1 and LoFi. The
+                                                                // difference between them is the number of bits used during computation.
+
+        // Set the runtime arguments for the kernels. This also registers
+        // the kernels with the program.
+        SetRuntimeArgs(program, reader, core, {src0_dram_buffer->address(), src1_dram_buffer->address(), n_tiles});
+        SetRuntimeArgs(program, writer, core, {dst_dram_buffer->address(), n_tiles});
+        SetRuntimeArgs(program, compute, core, {n_tiles});
+
+        // We have setup the program. Now we queue the kernel for execution. The final argument is set to false. This indicates
+        // to Metalium that the operation is non-blocking. The function is allowed to return upon the kernel being queued. We must
+        // ensure that the kernel is finished before we read the output buffer. This is done by calling distributed::Finish(cq) which waits until
+        // all operations in the command queue are finished. This is equivalent to calling EnqueueMeshWorkload(cq, program, true); telling
+        // Metalium to wait until the program is finished before returning.
+        workload.add_program(device_range, std::move(program));
+        distributed::EnqueueMeshWorkload(cq, workload, false);
+        distributed::Finish(cq);
+        // Equivalently:
+        // distributed::EnqueueMeshWorkload(cq, workload, true);
+
+        // Read the output buffer (from shard at mesh coordinate {0,0} on a unit mesh) and validate.
+        std::vector<bfloat16> result_vec;
+        distributed::EnqueueReadMeshBuffer(cq, result_vec, dst_dram_buffer, true);
+
+        constexpr float eps = 1e-2f; // loose tolerance because of the nature of bfloat16
+        TT_FATAL(result_vec.size() == a_data.size(), "Result vector size mismatch");
+        for (size_t i = 0; i < result_vec.size(); ++i) {
+            const float expected = static_cast<float>(a_data[i]) + val_to_add;
+            const float actual = static_cast<float>(result_vec[i]);
+
+            if (std::abs(expected - actual) > eps) {
+                pass = false;
+                fmt::print(stderr, "Result mismatch at index {}: expected {}, got {}\n", i, expected, actual);
+            }
+        }
+
+        // Finally, we close the device.
+        pass &= mesh_device->close();
+    } catch (const std::exception& e) {
+        fmt::print(stderr, "Test failed with exception!\n");
+        fmt::print(stderr, "{}\n", e.what());
+
+        throw;
     }
+    // clang-format on
+
+    if (pass) {
+        fmt::print("Test Passed\n");
+    } else {
+        TT_THROW("Test Failed");
+    }
+
     return 0;
 }
 
@@ -945,7 +1104,7 @@ Requirements:
 - Use correct headers: `#include <tt-metalium/host_api.hpp>` with angle brackets
 - Use `distributed::MeshDevice::create_unit_mesh()` for device setup
 - Create DRAM buffers using `distributed::MeshBuffer::create()`
-- Configure CB_0 (V), CB_1 (vj), CB_2 (isat constant), CB_16 (output). Initialize CB_2 with the constant isat value.
+- Configure CB_0, CB_1 for inputs, CB_16 for output.
 - Compile and launch the three kernels (reader, compute, writer) with SetRuntimeArgs
 - Enqueue program using `distributed::EnqueueMeshWorkload()`
 - Add CPU golden validation with PCC check
@@ -964,790 +1123,4 @@ Output format - provide TWO code blocks:
 ```
 
 Ensure CMakeLists.txt includes find_package(TT-Metalium) and target_link_libraries with TT::Metalium.
-```
-
-
-================================================================================
-YOUR PREVIOUS OUTPUT (the code you generated):
-================================================================================
-
-## Compute Kernel
-```cpp
-// COMPUTE KERNEL: diode_equation.cpp
-#include "compute_kernel_api.h"
-#include "compute_kernel_api/common.h"
-#include "compute_kernel_api/tile_move_copy.h"
-#include "compute_kernel_api/eltwise_unary/eltwise_unary.h"
-#include "compute_kernel_api/eltwise_unary/exp.h"
-#include "compute_kernel_api/eltwise_binary_sfpu.h"
-
-namespace NAMESPACE {
-void MAIN {
-    // Compile time args
-    constexpr uint32_t src_cb_index_V = 0;
-    constexpr uint32_t src_cb_index_vj = 1;
-    constexpr uint32_t src_cb_index_isat = 2;
-    constexpr uint32_t result_cb_index = 16;
-
-    // Constants
-    constexpr uint32_t one_tile = 1;
-
-    // Initialize the SFPU
-    init_sfpu(src_cb_index_V, result_cb_index);
-
-    // Wait for the SFPU to have registers available for us to use during
-    // the computation.
-    tile_regs_acquire();
-
-    // Wait for data to show up in the circular buffer and copy it from
-    // the circular buffer to registers so the SFPU can use it.
-    cb_wait_front(src_cb_index_V, one_tile);
-    cb_wait_front(src_cb_index_vj, one_tile);
-    cb_wait_front(src_cb_index_isat, one_tile);
-    copy_tile(src_cb_index_V, /*offset*/ 0, /*register_offset*/ 0);
-    copy_tile(src_cb_index_vj, /*offset*/ 0, /*register_offset*/ 1);
-    copy_tile(src_cb_index_isat, /*offset*/ 0, /*register_offset*/ 2);
-
-    //
-    // Fused operations
-    //
-    // Compute the division of V by vj using the SFPU.
-    div_binary_tile_init();
-    div_binary_tile(0, 1, 0);  // V/vj
-
-    // Compute the exponentiation of the result using the SFPU.
-    exp_tile_init();
-    exp_tile(0);  // exp(V/vj)
-
-    // Subtract 1 from the result using the SFPU.
-    sub_unary_tile_init();
-    sub_unary_tile(0, 1);  // exp(V/vj) - 1
-
-    // Multiply the result by isat using the SFPU.
-    mul_binary_tile_init();
-    mul_binary_tile(0, 2, 0);  // isat * (exp(V/vj) - 1)
-
-    // Wait for result to be done and data stored back to the circular buffer
-    tile_regs_commit();
-    tile_regs_wait();
-
-    // Reserve output tile
-    cb_reserve_back(result_cb_index, one_tile);
-
-    pack_tile(0, result_cb_index);  // copy tile 0 from the registers to the CB
-
-    // We don't need the input tile anymore, mark it as consumed
-    cb_pop_front(src_cb_index_V, one_tile);
-    cb_pop_front(src_cb_index_vj, one_tile);
-    cb_pop_front(src_cb_index_isat, one_tile);
-
-    // Done with the registers, we can release them for the next SFPU operation
-    tile_regs_release();
-
-    // Mark the tile as ready for the writer kernel to write to DRAM
-    cb_push_back(result_cb_index, one_tile);
-}
-}  // namespace NAMESPACE
-```
-
-## Reader Kernel
-```cpp
-// READER KERNEL: reader_binary_1_tile.cpp
-#include "dataflow_api.h"
-#include "tt-metalium/constants.hpp"
-
-#include <cstdint>
-#include <cstring>
-
-void kernel_main() {
-    // Runtime args
-    const uint32_t input_buffer_addr_V = get_arg_val<uint32_t>(0);
-    const uint32_t input_buffer_addr_vj = get_arg_val<uint32_t>(1);
-    const uint32_t input_buffer_addr_isat = get_arg_val<uint32_t>(2);
-
-    // Compile time args
-    constexpr uint32_t src_cb_index_V = 0;
-    constexpr uint32_t src_cb_index_vj = 1;
-    constexpr uint32_t src_cb_index_isat = 2;
-
-    // Input data config
-    const uint32_t input_data_tile_size_bytes = get_tile_size(src_cb_index_V);
-    constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
-    const auto interleaved_accessor_V =
-        TensorAccessor(interleaved_accessor_args, input_buffer_addr_V, input_data_tile_size_bytes);
-    const auto interleaved_accessor_vj =
-        TensorAccessor(interleaved_accessor_args, input_buffer_addr_vj, input_data_tile_size_bytes);
-    const auto interleaved_accessor_isat =
-        TensorAccessor(interleaved_accessor_args, input_buffer_addr_isat, input_data_tile_size_bytes);
-
-    // Constants
-    constexpr uint32_t one_tile = 1;
-
-    // Read input value data
-    cb_reserve_back(src_cb_index_V, one_tile);
-    const uint32_t l1_write_addr_V = get_write_ptr(src_cb_index_V);
-    noc_async_read_tile(0, interleaved_accessor_V, l1_write_addr_V);
-    cb_push_back(src_cb_index_V, one_tile);
-
-    cb_reserve_back(src_cb_index_vj, one_tile);
-    const uint32_t l1_write_addr_vj = get_write_ptr(src_cb_index_vj);
-    noc_async_read_tile(0, interleaved_accessor_vj, l1_write_addr_vj);
-    cb_push_back(src_cb_index_vj, one_tile);
-
-    cb_reserve_back(src_cb_index_isat, one_tile);
-    const uint32_t l1_write_addr_isat = get_write_ptr(src_cb_index_isat);
-    volatile tt_l1_ptr uint16_t* ptr = reinterpret_cast<volatile tt_l1_ptr uint16_t*>(l1_write_addr_isat);
-    for (uint32_t i = 0; i < tt::constants::TILE_HW; i++) {
-        ptr[i] = 1.0f;  // Initialize isat with a constant value
-    }
-    cb_push_back(src_cb_index_isat, one_tile);
-
-    noc_async_read_barrier();
-}
-```
-
-## Writer Kernel
-```cpp
-// WRITER KERNEL: writer_1_tile.cpp
-#include "dataflow_api.h"
-
-#include <cstdint>
-
-void kernel_main() {
-    // Runtime args
-    const uint32_t output_buffer_addr = get_arg_val<uint32_t>(0);
-
-    // Compile time args
-    constexpr uint32_t result_cb_index = 16;
-
-    // Input data config
-    const uint32_t output_data_tile_size_bytes = get_tile_size(result_cb_index);
-    constexpr auto interleaved_accessor_args = TensorAccessorArgs<1>();
-    const auto interleaved_accessor =
-        TensorAccessor(interleaved_accessor_args, output_buffer_addr, output_data_tile_size_bytes);
-
-    // Constants
-    constexpr uint32_t one_tile = 1;
-
-    // Save output data
-    cb_wait_front(result_cb_index, one_tile);
-    const uint32_t l1_read_addr = get_read_ptr(result_cb_index);
-    noc_async_write_tile(0, interleaved_accessor, l1_read_addr);
-    noc_async_write_barrier();
-    cb_pop_front(result_cb_index, one_tile);
-}
-```
-
-## Host Code
-```cpp
-// HOST CODE: diode_equation_single_v2.cpp
-// SPDX-FileCopyrightText: 2025 Tenstorrent AI ULC
-// SPDX-License-Identifier: Apache-2.0
-
-#include <tt-metalium/host_api.hpp>
-#include <tt-metalium/tensor_accessor_args.hpp>
-#include <tt-metalium/tilize_utils.hpp>
-#include <tt-metalium/constants.hpp>
-#include <tt-metalium/distributed.hpp>
-
-#include <cmath>
-#include <random>
-#include <cstdint>
-#include <vector>
-
-using namespace tt;
-using namespace tt::tt_metal;
-
-inline float check_bfloat16_vector_pcc(const std::vector<bfloat16>& vec_a, const std::vector<bfloat16>& vec_b) {
-    float x_mean = 0.0f;
-    float y_mean = 0.0f;
-
-    for (size_t i = 0; i < vec_a.size(); i++) {
-        x_mean += static_cast<float>(vec_a[i]);
-        y_mean += static_cast<float>(vec_b[i]);
-    }
-
-    x_mean /= vec_a.size();
-    y_mean /= vec_b.size();
-
-    float covariance = 0.0f;
-    float x_stddev = 0.0f;
-    float y_stddev = 0.0f;
-
-    for (size_t i = 0; i < vec_a.size(); i++) {
-        float x_diff = static_cast<float>(vec_a[i]) - x_mean;
-        float y_diff = static_cast<float>(vec_b[i]) - y_mean;
-
-        covariance += x_diff * y_diff;
-        x_stddev += x_diff * x_diff;
-        y_stddev += y_diff * y_diff;
-    }
-
-    covariance /= vec_a.size();
-    x_stddev /= vec_a.size();
-    y_stddev /= vec_b.size();
-
-    float correlation_coefficient_ = covariance / (std::sqrt(x_stddev) * std::sqrt(y_stddev));
-    return correlation_coefficient_;
-}
-
-int main() {
-    // 1. DEVICE SETUP - use distributed::MeshDevice for modern TT-Metal
-    std::shared_ptr<distributed::MeshDevice> mesh_device =
-        distributed::MeshDevice::create_unit_mesh(0);
-
-    distributed::MeshCommandQueue& cq = mesh_device->mesh_command_queue();
-    distributed::MeshWorkload workload;
-    distributed::MeshCoordinateRange device_range =
-        distributed::MeshCoordinateRange(mesh_device->shape());
-    Program program = CreateProgram();
-
-    // 2. CORE RANGE SETUP
-    constexpr CoreCoord core = {0, 0};
-
-    // 3. INPUT DATA PREPARATION
-    std::vector<bfloat16> input_vec(constants::TILE_HW);
-    std::mt19937 rng(std::random_device{}());
-    std::uniform_real_distribution<float> dist(0.f, 1.0f);
-    for (bfloat16& v : input_vec) {
-        v = bfloat16(dist(rng));
-    }
-
-    // Tilize input data for device
-    input_vec = tilize_nfaces(input_vec, constants::TILE_WIDTH, constants::TILE_HEIGHT);
-
-    // 4. DRAM BUFFER CREATION - use distributed::MeshBuffer
-    constexpr uint32_t single_tile_size =
-        sizeof(bfloat16) * constants::TILE_HEIGHT * constants::TILE_WIDTH;
-    distributed::DeviceLocalBufferConfig dram_config{
-        .page_size = single_tile_size,
-        .buffer_type = tt_metal::BufferType::DRAM
-    };
-    distributed::ReplicatedBufferConfig buffer_config{
-        .size = sizeof(bfloat16) * input_vec.size()
-    };
-    std::shared_ptr<distributed::MeshBuffer> input_buffer =
-        distributed::MeshBuffer::create(buffer_config, dram_config, mesh_device.get());
-    std::shared_ptr<distributed::MeshBuffer> output_buffer =
-        distributed::MeshBuffer::create(buffer_config, dram_config, mesh_device.get());
-
-    // Write input data to device
-    distributed::EnqueueWriteMeshBuffer(cq, input_buffer, input_vec, false);
-
-    // 5. CIRCULAR BUFFER SETUP
-    constexpr uint32_t cb_index_v = CBIndex::c_0;
-    constexpr uint32_t cb_index_vj = CBIndex::c_1;
-    constexpr uint32_t cb_index_isat = CBIndex::c_2;
-    constexpr uint32_t cb_index_output = CBIndex::c_16;
-    CircularBufferConfig cb_config_v =
-        CircularBufferConfig(single_tile_size, {{cb_index_v, tt::DataFormat::Float16_b}})
-            .set_page_size(cb_index_v, single_tile_size);
-    tt_metal::CreateCircularBuffer(program, core, cb_config_v);
-    CircularBufferConfig cb_config_vj =
-        CircularBufferConfig(single_tile_size, {{cb_index_vj, tt::DataFormat::Float16_b}})
-            .set_page_size(cb_index_vj, single_tile_size);
-    tt_metal::CreateCircularBuffer(program, core, cb_config_vj);
-    CircularBufferConfig cb_config_isat =
-        CircularBufferConfig(single_tile_size, {{cb_index_isat, tt::DataFormat::Float16_b}})
-            .set_page_size(cb_index_isat, single_tile_size);
-    tt_metal::CreateCircularBuffer(program, core, cb_config_isat);
-    CircularBufferConfig cb_config_output =
-        CircularBufferConfig(single_tile_size, {{cb_index_output, tt::DataFormat::Float16_b}})
-            .set_page_size(cb_index_output, single_tile_size);
-    tt_metal::CreateCircularBuffer(program, core, cb_config_output);
-
-    // Initialize isat constant
-    std::vector<bfloat16> isat_vec(constants::TILE_HW, bfloat16(0.1f));
-    isat_vec = tilize_nfaces(isat_vec, constants::TILE_WIDTH, constants::TILE_HEIGHT);
-    distributed::EnqueueWriteMeshBuffer(cq, input_buffer, isat_vec, false);
-
-    // 6. KERNEL CREATION
-    std::vector<uint32_t> compile_time_args = {cb_index_v, cb_index_vj, cb_index_isat, cb_index_output};
-    TensorAccessorArgs(*input_buffer).append_to(compile_time_args);
-    KernelHandle kernel_id_reader = CreateKernel(
-        program,
-        "path/to/kernel_reader.cpp",
-        core,
-        tt::tt_metal::ReaderDataMovementConfig{compile_time_args}
-    );
-    KernelHandle kernel_id_compute = CreateKernel(
-        program,
-        "path/to/kernel_compute.cpp",
-        core,
-        tt::tt_metal::ComputeConfig{.compile_args = compile_time_args}
-    );
-    KernelHandle kernel_id_writer = CreateKernel(
-        program,
-        "path/to/kernel_writer.cpp",
-        core,
-        tt::tt_metal::WriterDataMovementConfig{compile_time_args}
-    );
-
-    // 7. RUNTIME ARGS
-    SetRuntimeArgs(program, kernel_id_reader, core, {input_buffer->address()});
-    SetRuntimeArgs(program, kernel_id_compute, core, {input_buffer->address()});
-    SetRuntimeArgs(program, kernel_id_writer, core, {output_buffer->address()});
-
-    // 8. PROGRAM EXECUTION
-    workload.add_program(device_range, std::move(program));
-    distributed::EnqueueMeshWorkload(cq, workload, false);
-    distributed::Finish(cq);
-
-    // 9. READ RESULTS
-    std::vector<bfloat16> result_vec(constants::TILE_HW);
-    distributed::EnqueueReadMeshBuffer(cq, result_vec, output_buffer, true);
-
-    // Untilize results
-    result_vec = untilize_nfaces(result_vec, constants::TILE_WIDTH, constants::TILE_HEIGHT);
-
-    // 10. CPU GOLDEN VALIDATION
-    std::vector<bfloat16> golden_vec(constants::TILE_HW);
-    for (size_t i = 0; i < input_vec.size(); ++i) {
-        float v = static_cast<float>(input_vec[i]);
-        float vj = 0.02585f; // thermal voltage
-        float isat = 0.1f;
-        golden_vec[i] = bfloat16(isat * (std::exp(v / vj) - 1));
-    }
-    float pearson = check_bfloat16_vector_pcc(golden_vec, result_vec);
-    fmt::print("Metalium vs Golden -- PCC = {}\n", pearson);
-    TT_FATAL(pearson > 0.999, "PCC not high enough. Result PCC: {}, Expected PCC: 0.999", pearson);
-
-    // 11. CLEANUP
-    mesh_device->close();
-
-    return 0;
-}
-```
-
-## CMakeLists.txt
-```cmake
-# CMakeLists.txt
-cmake_minimum_required(VERSION 3.22...3.30)
-project(diode_equation_single_v2)
-
-add_executable(diode_equation_single_v2)
-target_sources(diode_equation_single_v2 PRIVATE diode_equation_single_v2.cpp)
-
-if(NOT TARGET TT::Metalium)
-    find_package(TT-Metalium REQUIRED)
-endif()
-target_link_libraries(diode_equation_single_v2 PUBLIC TT::Metalium)
-```
-
-================================================================================
-COMPILATION ERRORS (what went wrong):
-================================================================================
-```
-
-COMPILATION ERRORS (6 errors):
-  - profiler.cpp:1632: no member named 'to_string' in 'tracy::TTDeviceMarker'
-  - profiler.cpp:1640: no member named 'to_string' in 'tracy::TTDeviceMarker'
-  - profiler.cpp:1641: no member named 'to_string' in 'tracy::TTDeviceMarker'
-  - profiler.cpp:1653: no member named 'to_string' in 'tracy::TTDeviceMarker'
-  - profiler.cpp:1654: no member named 'to_string' in 'tracy::TTDeviceMarker'
-```
-
-```
-
-## User
-```
-The code you generated in the previous iteration failed to compile with the errors shown above.
-
-Please fix ALL the errors and provide the complete, corrected code.
-
-Output format - provide ALL files with fixes applied:
-
-```cpp
-// COMPUTE KERNEL
-[complete corrected compute kernel code]
-```
-
-```cpp
-// READER KERNEL
-[complete corrected reader kernel code]
-```
-
-```cpp
-// WRITER KERNEL
-[complete corrected writer kernel code]
-```
-
-```cpp
-// HOST CODE
-[complete corrected host code]
-```
-
-```cmake
-# CMakeLists.txt
-[complete corrected cmake file]
-```
-
-CRITICAL: Provide COMPLETE files, not just the changed sections.
-```
-
-
-## LLM Response
-```
-## Compute Kernel
-```cpp
-// COMPUTE KERNEL: diode_equation.cpp
-#include "compute_kernel_api.h"
-#include "compute_kernel_api/common.h"
-#include "compute_kernel_api/tile_move_copy.h"
-#include "compute_kernel_api/eltwise_unary/eltwise_unary.h"
-#include "compute_kernel_api/eltwise_unary/exp.h"
-#include "compute_kernel_api/eltwise_binary_sfpu.h"
-
-namespace NAMESPACE {
-void MAIN {
-    // Compile time args
-    constexpr uint32_t src_cb_index_V = 0;
-    constexpr uint32_t src_cb_index_vj = 1;
-    constexpr uint32_t src_cb_index_isat = 2;
-    constexpr uint32_t result_cb_index = 16;
-
-    // Constants
-    constexpr uint32_t one_tile = 1;
-
-    // Initialize the SFPU
-    init_sfpu(src_cb_index_V, result_cb_index);
-
-    // Wait for the SFPU to have registers available for us to use during
-    // the computation.
-    tile_regs_acquire();
-
-    // Wait for data to show up in the circular buffer and copy it from
-    // the circular buffer to registers so the SFPU can use it.
-    cb_wait_front(src_cb_index_V, one_tile);
-    cb_wait_front(src_cb_index_vj, one_tile);
-    cb_wait_front(src_cb_index_isat, one_tile);
-    copy_tile(src_cb_index_V, /*offset*/ 0, /*register_offset*/ 0);
-    copy_tile(src_cb_index_vj, /*offset*/ 0, /*register_offset*/ 1);
-    copy_tile(src_cb_index_isat, /*offset*/ 0, /*register_offset*/ 2);
-
-    //
-    // Fused operations
-    //
-    // Compute the division of V by vj using the SFPU.
-    div_binary_tile_init();
-    div_binary_tile(0, 1, 0);  // V/vj
-
-    // Compute the exponentiation of the result using the SFPU.
-    exp_tile_init();
-    exp_tile(0);  // exp(V/vj)
-
-    // Subtract 1 from the result using the SFPU.
-    sub_unary_tile_init();
-    sub_unary_tile(0, 1);  // exp(V/vj) - 1
-
-    // Multiply the result by isat using the SFPU.
-    mul_binary_tile_init();
-    mul_binary_tile(0, 2, 0);  // isat * (exp(V/vj) - 1)
-
-    // Wait for result to be done and data stored back to the circular buffer
-    tile_regs_commit();
-    tile_regs_wait();
-
-    // Reserve output tile
-    cb_reserve_back(result_cb_index, one_tile);
-
-    pack_tile(0, result_cb_index);  // copy tile 0 from the registers to the CB
-
-    // We don't need the input tile anymore, mark it as consumed
-    cb_pop_front(src_cb_index_V, one_tile);
-    cb_pop_front(src_cb_index_vj, one_tile);
-    cb_pop_front(src_cb_index_isat, one_tile);
-
-    // Done with the registers, we can release them for the next SFPU operation
-    tile_regs_release();
-
-    // Mark the tile as ready for the writer kernel to write to DRAM
-    cb_push_back(result_cb_index, one_tile);
-}
-}  // namespace NAMESPACE
-```
-
-## Reader Kernel
-```cpp
-// READER KERNEL: reader_binary_1_tile.cpp
-#include "dataflow_api.h"
-#include "tt-metalium/constants.hpp"
-
-#include <cstdint>
-#include <cstring>
-
-void kernel_main() {
-    // Runtime args
-    const uint32_t input_buffer_addr_V = get_arg_val<uint32_t>(0);
-    const uint32_t input_buffer_addr_vj = get_arg_val<uint32_t>(1);
-    const uint32_t input_buffer_addr_isat = get_arg_val<uint32_t>(2);
-
-    // Compile time args
-    constexpr uint32_t src_cb_index_V = 0;
-    constexpr uint32_t src_cb_index_vj = 1;
-    constexpr uint32_t src_cb_index_isat = 2;
-
-    // Input data config
-    const uint32_t input_data_tile_size_bytes = get_tile_size(src_cb_index_V);
-    constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
-    const auto interleaved_accessor_V =
-        TensorAccessor(interleaved_accessor_args, input_buffer_addr_V, input_data_tile_size_bytes);
-    const auto interleaved_accessor_vj =
-        TensorAccessor(interleaved_accessor_args, input_buffer_addr_vj, input_data_tile_size_bytes);
-    const auto interleaved_accessor_isat =
-        TensorAccessor(interleaved_accessor_args, input_buffer_addr_isat, input_data_tile_size_bytes);
-
-    // Constants
-    constexpr uint32_t one_tile = 1;
-
-    // Read input value data
-    cb_reserve_back(src_cb_index_V, one_tile);
-    const uint32_t l1_write_addr_V = get_write_ptr(src_cb_index_V);
-    noc_async_read_tile(0, interleaved_accessor_V, l1_write_addr_V);
-    cb_push_back(src_cb_index_V, one_tile);
-
-    cb_reserve_back(src_cb_index_vj, one_tile);
-    const uint32_t l1_write_addr_vj = get_write_ptr(src_cb_index_vj);
-    noc_async_read_tile(0, interleaved_accessor_vj, l1_write_addr_vj);
-    cb_push_back(src_cb_index_vj, one_tile);
-
-    cb_reserve_back(src_cb_index_isat, one_tile);
-    const uint32_t l1_write_addr_isat = get_write_ptr(src_cb_index_isat);
-    volatile tt_l1_ptr uint16_t* ptr = reinterpret_cast<volatile tt_l1_ptr uint16_t*>(l1_write_addr_isat);
-    for (uint32_t i = 0; i < tt::constants::TILE_HW; i++) {
-        ptr[i] = 1.0f;  // Initialize isat with a constant value
-    }
-    cb_push_back(src_cb_index_isat, one_tile);
-
-    noc_async_read_barrier();
-}
-```
-
-## Writer Kernel
-```cpp
-// WRITER KERNEL: writer_1_tile.cpp
-#include "dataflow_api.h"
-
-#include <cstdint>
-
-void kernel_main() {
-    // Runtime args
-    const uint32_t output_buffer_addr = get_arg_val<uint32_t>(0);
-
-    // Compile time args
-    constexpr uint32_t result_cb_index = 16;
-
-    // Input data config
-    const uint32_t output_data_tile_size_bytes = get_tile_size(result_cb_index);
-    constexpr auto interleaved_accessor_args = TensorAccessorArgs<1>();
-    const auto interleaved_accessor =
-        TensorAccessor(interleaved_accessor_args, output_buffer_addr, output_data_tile_size_bytes);
-
-    // Constants
-    constexpr uint32_t one_tile = 1;
-
-    // Save output data
-    cb_wait_front(result_cb_index, one_tile);
-    const uint32_t l1_read_addr = get_read_ptr(result_cb_index);
-    noc_async_write_tile(0, interleaved_accessor, l1_read_addr);
-    noc_async_write_barrier();
-    cb_pop_front(result_cb_index, one_tile);
-}
-```
-
-## Host Code
-```cpp
-// HOST CODE: diode_equation_single_v2.cpp
-// SPDX-FileCopyrightText: 2025 Tenstorrent AI ULC
-// SPDX-License-Identifier: Apache-2.0
-
-#include <tt-metalium/host_api.hpp>
-#include <tt-metalium/tensor_accessor_args.hpp>
-#include <tt-metalium/tilize_utils.hpp>
-#include <tt-metalium/constants.hpp>
-#include <tt-metalium/distributed.hpp>
-
-#include <cmath>
-#include <random>
-#include <cstdint>
-#include <vector>
-
-using namespace tt;
-using namespace tt::tt_metal;
-
-inline float check_bfloat16_vector_pcc(const std::vector<bfloat16>& vec_a, const std::vector<bfloat16>& vec_b) {
-    float x_mean = 0.0f;
-    float y_mean = 0.0f;
-
-    for (size_t i = 0; i < vec_a.size(); i++) {
-        x_mean += static_cast<float>(vec_a[i]);
-        y_mean += static_cast<float>(vec_b[i]);
-    }
-
-    x_mean /= vec_a.size();
-    y_mean /= vec_b.size();
-
-    float covariance = 0.0f;
-    float x_stddev = 0.0f;
-    float y_stddev = 0.0f;
-
-    for (size_t i = 0; i < vec_a.size(); i++) {
-        float x_diff = static_cast<float>(vec_a[i]) - x_mean;
-        float y_diff = static_cast<float>(vec_b[i]) - y_mean;
-
-        covariance += x_diff * y_diff;
-        x_stddev += x_diff * x_diff;
-        y_stddev += y_diff * y_diff;
-    }
-
-    covariance /= vec_a.size();
-    x_stddev /= vec_a.size();
-    y_stddev /= vec_b.size();
-
-    float correlation_coefficient_ = covariance / (std::sqrt(x_stddev) * std::sqrt(y_stddev));
-    return correlation_coefficient_;
-}
-
-int main() {
-    // 1. DEVICE SETUP - use distributed::MeshDevice for modern TT-Metal
-    std::shared_ptr<distributed::MeshDevice> mesh_device =
-        distributed::MeshDevice::create_unit_mesh(0);
-
-    distributed::MeshCommandQueue& cq = mesh_device->mesh_command_queue();
-    distributed::MeshWorkload workload;
-    distributed::MeshCoordinateRange device_range =
-        distributed::MeshCoordinateRange(mesh_device->shape());
-    Program program = CreateProgram();
-
-    // 2. CORE RANGE SETUP
-    constexpr CoreCoord core = {0, 0};
-
-    // 3. INPUT DATA PREPARATION
-    std::vector<bfloat16> input_vec(constants::TILE_HW);
-    std::mt19937 rng(std::random_device{}());
-    std::uniform_real_distribution<float> dist(0.f, 1.0f);
-    for (bfloat16& v : input_vec) {
-        v = bfloat16(dist(rng));
-    }
-
-    // Tilize input data for device
-    input_vec = tilize_nfaces(input_vec, constants::TILE_WIDTH, constants::TILE_HEIGHT);
-
-    // 4. DRAM BUFFER CREATION - use distributed::MeshBuffer
-    constexpr uint32_t single_tile_size =
-        sizeof(bfloat16) * constants::TILE_HEIGHT * constants::TILE_WIDTH;
-    distributed::DeviceLocalBufferConfig dram_config{
-        .page_size = single_tile_size,
-        .buffer_type = tt_metal::BufferType::DRAM
-    };
-    distributed::ReplicatedBufferConfig buffer_config{
-        .size = sizeof(bfloat16) * input_vec.size()
-    };
-    std::shared_ptr<distributed::MeshBuffer> input_buffer =
-        distributed::MeshBuffer::create(buffer_config, dram_config, mesh_device.get());
-    std::shared_ptr<distributed::MeshBuffer> output_buffer =
-        distributed::MeshBuffer::create(buffer_config, dram_config, mesh_device.get());
-
-    // Write input data to device
-    distributed::EnqueueWriteMeshBuffer(cq, input_buffer, input_vec, false);
-
-    // 5. CIRCULAR BUFFER SETUP
-    constexpr uint32_t cb_index_v = CBIndex::c_0;
-    constexpr uint32_t cb_index_vj = CBIndex::c_1;
-    constexpr uint32_t cb_index_isat = CBIndex::c_2;
-    constexpr uint32_t cb_index_output = CBIndex::c_16;
-    CircularBufferConfig cb_config_v =
-        CircularBufferConfig(single_tile_size, {{cb_index_v, tt::DataFormat::Float16_b}})
-            .set_page_size(cb_index_v, single_tile_size);
-    tt_metal::CreateCircularBuffer(program, core, cb_config_v);
-    CircularBufferConfig cb_config_vj =
-        CircularBufferConfig(single_tile_size, {{cb_index_vj, tt::DataFormat::Float16_b}})
-            .set_page_size(cb_index_vj, single_tile_size);
-    tt_metal::CreateCircularBuffer(program, core, cb_config_vj);
-    CircularBufferConfig cb_config_isat =
-        CircularBufferConfig(single_tile_size, {{cb_index_isat, tt::DataFormat::Float16_b}})
-            .set_page_size(cb_index_isat, single_tile_size);
-    tt_metal::CreateCircularBuffer(program, core, cb_config_isat);
-    CircularBufferConfig cb_config_output =
-        CircularBufferConfig(single_tile_size, {{cb_index_output, tt::DataFormat::Float16_b}})
-            .set_page_size(cb_index_output, single_tile_size);
-    tt_metal::CreateCircularBuffer(program, core, cb_config_output);
-
-    // Initialize isat constant
-    std::vector<bfloat16> isat_vec(constants::TILE_HW, bfloat16(0.1f));
-    isat_vec = tilize_nfaces(isat_vec, constants::TILE_WIDTH, constants::TILE_HEIGHT);
-    distributed::EnqueueWriteMeshBuffer(cq, input_buffer, isat_vec, false);
-
-    // 6. KERNEL CREATION
-    std::vector<uint32_t> compile_time_args = {cb_index_v, cb_index_vj, cb_index_isat, cb_index_output};
-    TensorAccessorArgs(*input_buffer).append_to(compile_time_args);
-    KernelHandle kernel_id_reader = CreateKernel(
-        program,
-        "path/to/kernel_reader.cpp",
-        core,
-        tt::tt_metal::ReaderDataMovementConfig{compile_time_args}
-    );
-    KernelHandle kernel_id_compute = CreateKernel(
-        program,
-        "path/to/kernel_compute.cpp",
-        core,
-        tt::tt_metal::ComputeConfig{.compile_args = compile_time_args}
-    );
-    KernelHandle kernel_id_writer = CreateKernel(
-        program,
-        "path/to/kernel_writer.cpp",
-        core,
-        tt::tt_metal::WriterDataMovementConfig{compile_time_args}
-    );
-
-    // 7. RUNTIME ARGS
-    SetRuntimeArgs(program, kernel_id_reader, core, {input_buffer->address()});
-    SetRuntimeArgs(program, kernel_id_compute, core, {input_buffer->address()});
-    SetRuntimeArgs(program, kernel_id_writer, core, {output_buffer->address()});
-
-    // 8. PROGRAM EXECUTION
-    workload.add_program(device_range, std::move(program));
-    distributed::EnqueueMeshWorkload(cq, workload, false);
-    distributed::Finish(cq);
-
-    // 9. READ RESULTS
-    std::vector<bfloat16> result_vec(constants::TILE_HW);
-    distributed::EnqueueReadMeshBuffer(cq, result_vec, output_buffer, true);
-
-    // Untilize results
-    result_vec = untilize_nfaces(result_vec, constants::TILE_WIDTH, constants::TILE_HEIGHT);
-
-    // 10. CPU GOLDEN VALIDATION
-    std::vector<bfloat16> golden_vec(constants::TILE_HW);
-    for (size_t i = 0; i < input_vec.size(); ++i) {
-        float v = static_cast<float>(input_vec[i]);
-        float vj = 0.02585f; // thermal voltage
-        float isat = 0.1f;
-        golden_vec[i] = bfloat16(isat * (std::exp(v / vj) - 1));
-    }
-    float pearson = check_bfloat16_vector_pcc(golden_vec, result_vec);
-    fmt::print("Metalium vs Golden -- PCC = {}\n", pearson);
-    TT_FATAL(pearson > 0.999, "PCC not high enough. Result PCC: {}, Expected PCC: 0.999", pearson);
-
-    // 11. CLEANUP
-    mesh_device->close();
-
-    return 0;
-}
-```
-
-## CMakeLists.txt
-```cmake
-# CMakeLists.txt
-cmake_minimum_required(VERSION 3.22...3.30)
-project(diode_equation_single_v2)
-
-add_executable(diode_equation_single_v2)
-target_sources(diode_equation_single_v2 PRIVATE diode_equation_single_v2.cpp)
-
-if(NOT TARGET TT::Metalium)
-    find_package(TT-Metalium REQUIRED)
-endif()
-target_link_libraries(diode_equation_single_v2 PUBLIC TT::Metalium)
-```
 ```

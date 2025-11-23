@@ -6,14 +6,245 @@ import logging
 import re
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-from groq import Groq
+from typing import Dict, List, Optional, Tuple, Any
 
 from config import TT_METAL_HOME, MODEL_DEFAULT, TEMPERATURE, MAX_TOKENS
 from host_api_retriever import retrieve_host_api_signatures, create_host_template
 from retriever import retrieve_host_examples
 
 logger = logging.getLogger("kernel_generator_v2")
+
+
+def run_example(example_path: Path) -> Dict[str, any]:
+    """
+    Run the compiled example executable.
+
+    Args:
+        example_path: Path to the example directory (e.g., diode_equation_single_core_v2_generated)
+
+    Returns:
+        {
+            'success': bool,
+            'stdout': str,
+            'stderr': str,
+            'exit_code': int,
+            'error_summary': str
+        }
+    """
+    # Read CMakeLists.txt to get the actual executable name
+    cmake_file = example_path / "CMakeLists.txt"
+    exec_name = None
+
+    if cmake_file.exists():
+        cmake_content = cmake_file.read_text()
+        # Look for add_executable(name) or project(name)
+        import re
+
+        # Try add_executable first
+        match = re.search(r"add_executable\s*\(\s*(\w+)", cmake_content)
+        if match:
+            exec_name = match.group(1)
+        else:
+            # Fall back to project name
+            match = re.search(r"project\s*\(\s*(\w+)", cmake_content)
+            if match:
+                exec_name = match.group(1)
+
+    if not exec_name:
+        # Fallback: try to infer from directory name
+        example_name = example_path.name
+        if example_name.endswith("_generated"):
+            base_name = example_name.replace("_generated", "")
+        else:
+            base_name = example_name
+        exec_name = base_name.replace("_single_core", "_single").replace("_multi_core", "_multi")
+
+    executable = TT_METAL_HOME / "build" / "programming_examples" / exec_name
+
+    logger.info(f"Looking for executable: {executable}")
+
+    if not executable.exists():
+        return {
+            "success": False,
+            "stdout": "",
+            "stderr": f"Executable not found: {executable}",
+            "exit_code": -1,
+            "error_summary": f"Executable not found: {executable}",
+        }
+
+    logger.info(f"Running: {executable}")
+
+    try:
+        result = subprocess.run(
+            [str(executable)],
+            cwd=TT_METAL_HOME,
+            capture_output=True,
+            text=True,
+            timeout=60,  # 1 minute timeout for runtime
+        )
+
+        # Combine stdout and stderr
+        combined_output = result.stdout + "\n" + result.stderr
+
+        # Check for runtime errors
+        success = result.returncode == 0
+
+        if not success:
+            error_summary = parse_runtime_errors(combined_output)
+        else:
+            error_summary = ""
+
+        return {
+            "success": success,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "combined": combined_output,
+            "exit_code": result.returncode,
+            "error_summary": error_summary,
+        }
+    except subprocess.TimeoutExpired:
+        return {
+            "success": False,
+            "stdout": "",
+            "stderr": "Runtime timeout (>1 minute)",
+            "combined": "Runtime timeout (>1 minute)",
+            "exit_code": -1,
+            "error_summary": "Program execution took too long - possible infinite loop or hang",
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "stdout": "",
+            "stderr": str(e),
+            "combined": str(e),
+            "exit_code": -1,
+            "error_summary": f"Failed to run executable: {e}",
+        }
+
+
+def parse_runtime_errors(output: str) -> str:
+    """
+    Parse runtime errors and extract detailed compilation error messages.
+
+    Extracts:
+    - Detailed compilation errors (missing functions, syntax errors, etc.)
+    - TT_FATAL/TT_THROW errors with context
+    - Assertion failures with details
+    - Segmentation faults
+    - Device errors
+
+    Args:
+        output: Combined stdout + stderr from runtime
+
+    Returns:
+        Detailed error summary with actionable information
+    """
+    if not output or not output.strip():
+        return "No error output captured"
+
+    lines = output.split("\n")
+
+    # First, extract detailed compilation errors from kernel builds
+    compilation_errors = []
+    in_error_block = False
+    current_error = []
+
+    for i, line in enumerate(lines):
+        # Detect start of compilation error blocks
+        if "error:" in line.lower() and (".cpp" in line or ".h" in line):
+            in_error_block = True
+            current_error = [line.strip()]
+        elif in_error_block:
+            # Continue collecting error context
+            if line.strip() and not line.strip().startswith("2025-"):  # Not a log timestamp line
+                current_error.append(line.strip())
+                # Stop if we see another error or a new section
+                if len(current_error) > 10 or "error:" in line.lower() and len(current_error) > 1:
+                    compilation_errors.append("\n".join(current_error))
+                    current_error = [line.strip()] if "error:" in line.lower() else []
+            else:
+                if current_error:
+                    compilation_errors.append("\n".join(current_error))
+                    current_error = []
+                in_error_block = False
+
+    if current_error:
+        compilation_errors.append("\n".join(current_error))
+
+    # Extract other error types
+    errors = {"tt_fatal": [], "tt_throw": [], "assertions": [], "device": [], "other": []}
+
+    for i, line in enumerate(lines):
+        lower_line = line.lower()
+
+        # TT_FATAL errors - get more context
+        if "tt_fatal" in lower_line:
+            context_lines = [line.strip()]
+            for j in range(i + 1, min(i + 3, len(lines))):
+                if lines[j].strip():
+                    context_lines.append(lines[j].strip())
+            errors["tt_fatal"].append("\n".join(context_lines))
+
+        # TT_THROW errors - get the full error message
+        elif "tt_throw" in lower_line:
+            context_lines = [line.strip()]
+            # Get next few lines for full error context
+            for j in range(i + 1, min(i + 5, len(lines))):
+                if lines[j].strip() and not lines[j].strip().startswith("2025-"):
+                    context_lines.append(lines[j].strip())
+                elif "Log:" in lines[j]:
+                    # Get the log details
+                    for k in range(j, min(j + 10, len(lines))):
+                        if lines[k].strip():
+                            context_lines.append(lines[k].strip())
+                        if "error:" in lines[k].lower():
+                            break
+                    break
+            errors["tt_throw"].append("\n".join(context_lines))
+
+        # Assertion failures - get full details
+        elif "assertion" in lower_line and "failed" in lower_line:
+            context_lines = [line.strip()]
+            for j in range(i + 1, min(i + 3, len(lines))):
+                if "note:" in lines[j].lower() or "comparison reduces" in lines[j].lower():
+                    context_lines.append(lines[j].strip())
+            errors["assertions"].append("\n".join(context_lines))
+
+    # Build detailed summary
+    summary_parts = []
+
+    if compilation_errors:
+        summary_parts.append("=" * 80)
+        summary_parts.append("DETAILED COMPILATION ERRORS:")
+        summary_parts.append("=" * 80)
+        for err in compilation_errors[:20]:  # Show up to 20 distinct errors
+            summary_parts.append(err)
+            summary_parts.append("-" * 40)
+
+    if errors["assertions"]:
+        summary_parts.append("\nASSERTION FAILURES:")
+        for err in set(errors["assertions"][:10]):  # Unique assertions
+            summary_parts.append(err)
+            summary_parts.append("")
+
+    if errors["tt_throw"]:
+        summary_parts.append(f"\nTT_THROW ERRORS:")
+        for err in errors["tt_throw"][:5]:  # First 5 with context
+            summary_parts.append(err)
+            summary_parts.append("")
+
+    if errors["tt_fatal"]:
+        summary_parts.append(f"\nFATAL ERRORS:")
+        for err in errors["tt_fatal"][:5]:
+            summary_parts.append(err)
+            summary_parts.append("")
+
+    if not compilation_errors and not any(errors.values()):
+        # No categorized errors, show last 50 lines of output
+        summary_parts.append("RUNTIME FAILURE - Last 50 lines of output:")
+        summary_parts.extend(lines[-50:])
+
+    return "\n".join(summary_parts)
 
 
 def compile_example(example_path: Path) -> Dict[str, any]:
@@ -88,99 +319,121 @@ def compile_example(example_path: Path) -> Dict[str, any]:
 
 def parse_compilation_errors(output: str) -> str:
     """
-    Parse and categorize compilation errors into a concise summary.
+    Parse and extract detailed compilation errors with full context.
 
     Extracts:
+    - Complete error messages with file:line information
+    - Compiler suggestions (did you mean X?)
     - Linker errors (undefined reference)
-    - Syntax errors
     - Missing include errors
     - API signature mismatches
+    - Template instantiation errors
 
     Args:
         output: Combined stdout + stderr from build
 
     Returns:
-        Concise error summary (not full output)
+        Detailed error summary with actionable information
     """
     if not output or not output.strip():
         return "No error output captured"
 
-    errors = {"linker": [], "syntax": [], "includes": [], "api": [], "cmake": [], "other": []}
-
     lines = output.split("\n")
+
+    # Extract detailed compilation errors with context
+    detailed_errors = []
+    in_error_block = False
+    current_error = []
+
+    for i, line in enumerate(lines):
+        lower_line = line.lower()
+
+        # Start of an error
+        if "error:" in lower_line and (".cpp" in line or ".h" in line or "instantiation of" in lower_line):
+            if current_error:
+                detailed_errors.append("\n".join(current_error))
+            current_error = [line.strip()]
+            in_error_block = True
+        elif in_error_block:
+            # Collect context lines (notes, suggestions, code snippets)
+            if any(
+                keyword in lower_line
+                for keyword in ["note:", "required", "did you mean", "^~~", "instantiation", "comparison reduces"]
+            ):
+                current_error.append(line.strip())
+            elif line.strip().startswith("|") or "^" in line:
+                # Code context or error markers
+                current_error.append(line.strip())
+            elif "error:" in lower_line:
+                # New error starting, save current and start new
+                detailed_errors.append("\n".join(current_error))
+                current_error = [line.strip()]
+            elif not line.strip():
+                # Empty line might signal end of error block
+                if len(current_error) > 1:
+                    detailed_errors.append("\n".join(current_error))
+                    current_error = []
+                in_error_block = False
+            elif len(current_error) < 15:  # Don't let errors get too long
+                current_error.append(line.strip())
+
+    if current_error:
+        detailed_errors.append("\n".join(current_error))
+
+    # Also categorize for summary
+    errors = {"linker": [], "includes": [], "api": [], "cmake": []}
 
     for line in lines:
         lower_line = line.lower()
 
-        # Linker errors
         if "undefined reference" in lower_line:
-            # Extract the symbol name
             match = re.search(r"undefined reference to [`']([^'`]+)", line)
             if match:
                 symbol = match.group(1)
-                # Simplify symbol (remove template/namespace cruft)
                 simple_symbol = symbol.split("(")[0].split("<")[0]
                 if simple_symbol not in errors["linker"]:
                     errors["linker"].append(simple_symbol)
 
-        # Include errors
         elif "fatal error:" in lower_line and (".h" in lower_line or ".hpp" in lower_line):
             match = re.search(r"fatal error: ([^:]+): No such file", line)
             if match:
                 errors["includes"].append(match.group(1))
 
-        # Syntax/compilation errors
-        elif "error:" in lower_line and ".cpp:" in lower_line:
-            # Extract file:line: error message
-            match = re.search(r"([^/\s]+\.cpp):(\d+):\d+: error: (.+)", line)
-            if match:
-                file, lineno, msg = match.groups()
-                errors["syntax"].append(f"{file}:{lineno}: {msg[:100]}")
-
-        # API signature mismatch
-        elif "no matching function" in lower_line or "cannot convert" in lower_line:
-            if line.strip() and "error:" in lower_line:
-                errors["api"].append(line.strip()[:150])
-
-        # CMake errors
         elif "cmake error" in lower_line:
             if line.strip():
                 errors["cmake"].append(line.strip()[:200])
 
-    # Build summary
+    # Build detailed summary
     summary_parts = []
 
+    if detailed_errors:
+        summary_parts.append("=" * 80)
+        summary_parts.append("DETAILED COMPILATION ERRORS:")
+        summary_parts.append("=" * 80)
+        for i, err in enumerate(detailed_errors[:25], 1):  # Show up to 25 errors
+            summary_parts.append(f"\nError #{i}:")
+            summary_parts.append(err)
+            summary_parts.append("-" * 40)
+
     if errors["linker"]:
-        unique_linker = list(set(errors["linker"]))[:10]  # Top 10 unique symbols
-        summary_parts.append(f"LINKER ERRORS ({len(unique_linker)} unique symbols):")
-        for symbol in unique_linker:
+        summary_parts.append(f"\n\nLINKER ERRORS ({len(errors['linker'])} unique symbols):")
+        for symbol in errors["linker"][:10]:
             summary_parts.append(f"  - undefined reference to: {symbol}")
 
     if errors["includes"]:
-        unique_includes = list(set(errors["includes"]))
-        summary_parts.append(f"\nINCLUDE ERRORS:")
-        for inc in unique_includes:
+        summary_parts.append(f"\n\nINCLUDE ERRORS:")
+        for inc in set(errors["includes"]):
             summary_parts.append(f"  - missing header: {inc}")
 
-    if errors["syntax"]:
-        summary_parts.append(f"\nCOMPILATION ERRORS ({len(errors['syntax'])} errors):")
-        for err in errors["syntax"][:5]:  # First 5
-            summary_parts.append(f"  - {err}")
-
-    if errors["api"]:
-        summary_parts.append(f"\nAPI SIGNATURE ERRORS:")
-        for err in errors["api"][:3]:  # First 3
-            summary_parts.append(f"  - {err}")
-
     if errors["cmake"]:
-        summary_parts.append(f"\nCMAKE ERRORS:")
-        for err in errors["cmake"][:5]:  # First 5
+        summary_parts.append(f"\n\nCMAKE ERRORS:")
+        for err in errors["cmake"][:5]:
             summary_parts.append(f"  - {err}")
 
-    if not any(errors.values()):
-        # No categorized errors, show last 20 lines of stderr
-        summary_parts.append("BUILD FAILED - Last 20 lines of error output:")
-        summary_parts.extend(lines[-20:])
+    if not detailed_errors and not any(errors.values()):
+        # No categorized errors, show last 30 lines of output
+        summary_parts.append("BUILD FAILED - Last 30 lines of error output:")
+        summary_parts.extend(lines[-30:])
 
     return "\n".join(summary_parts)
 
@@ -312,19 +565,19 @@ CRITICAL: Provide COMPLETE files, not just the changed sections."""
     return system_prompt, user_prompt
 
 
-def iterative_refine(client: Groq, args):
+def iterative_refine(client: Any, args):
     """
     Main iterative refinement loop.
 
     Args:
-        client: Groq API client
+        client: LLM API client (Groq or OpenAI)
         args: Parsed command-line arguments
     """
     # Pre-flight check: verify API key is set
-    if not client.api_key or client.api_key == "":
+    if not hasattr(client, "api_key") or not client.api_key or client.api_key == "":
         raise SystemExit(
-            "ERROR: Groq API key not set. Please set GROQ_API_KEY environment variable.\n"
-            "Example: export GROQ_API_KEY='your-api-key-here'"
+            "ERROR: LLM API key not set. Please set GROQ_API_KEY or OPENAI_API_KEY environment variable.\n"
+            "Example: export OPENAI_API_KEY='your-api-key-here'"
         )
 
     example_path = Path(args.example_path)
@@ -345,27 +598,52 @@ def iterative_refine(client: Groq, args):
         logger.info(f"{'='*60}\n")
 
         # Compile
-        result = compile_example(example_path)
+        compile_result = compile_example(example_path)
 
-        if result["success"]:
-            logger.info("✓ ✓ ✓ COMPILATION SUCCESSFUL! ✓ ✓ ✓")
-            logger.info(f"Example compiled successfully after {iteration} iteration(s)")
-            return
+        if compile_result["success"]:
+            logger.info("✓ Compilation successful!")
 
-        logger.warning(f"✗ Compilation failed (exit code: {result['exit_code']})")
+            # Now try to run the executable
+            logger.info("Attempting to run the executable...")
+            run_result = run_example(example_path)
 
-        # Debug: Save full output to file
-        debug_file = example_path / f"build_output_iteration_{iteration}.txt"
-        debug_file.write_text(
-            f"=== STDOUT ===\n{result['stdout']}\n\n=== STDERR ===\n{result['stderr']}\n\n=== COMBINED ===\n{result.get('combined', '')}"
-        )
-        logger.info(f"Saved full build output to: {debug_file}")
+            if run_result["success"]:
+                logger.info("✓ ✓ ✓ RUNTIME SUCCESSFUL! ✓ ✓ ✓")
+                logger.info(f"Example compiled and ran successfully after {iteration} iteration(s)")
+                return
+            else:
+                logger.warning(f"✗ Runtime failed (exit code: {run_result['exit_code']})")
 
-        logger.info("\nError Summary:")
-        logger.info(result["error_summary"])
+                # Save runtime output to file
+                runtime_file = example_path / f"runtime_output_iteration_{iteration}.txt"
+                runtime_file.write_text(
+                    f"=== STDOUT ===\n{run_result['stdout']}\n\n=== STDERR ===\n{run_result['stderr']}\n\n=== COMBINED ===\n{run_result.get('combined', '')}"
+                )
+                logger.info(f"Saved runtime output to: {runtime_file}")
 
-        # Detect error type
-        error_type = detect_error_type(result["error_summary"])
+                logger.info("\nRuntime Error Summary:")
+                logger.info(run_result["error_summary"])
+
+                # Use runtime errors for refinement
+                error_type = "runtime"
+                error_summary = run_result["error_summary"]
+        else:
+            logger.warning(f"✗ Compilation failed (exit code: {compile_result['exit_code']})")
+
+            # Debug: Save full output to file
+            debug_file = example_path / f"build_output_iteration_{iteration}.txt"
+            debug_file.write_text(
+                f"=== STDOUT ===\n{compile_result['stdout']}\n\n=== STDERR ===\n{compile_result['stderr']}\n\n=== COMBINED ===\n{compile_result.get('combined', '')}"
+            )
+            logger.info(f"Saved full build output to: {debug_file}")
+
+            logger.info("\nCompilation Error Summary:")
+            logger.info(compile_result["error_summary"])
+
+            # Detect error type
+            error_type = detect_error_type(compile_result["error_summary"])
+            error_summary = compile_result["error_summary"]
+
         logger.info(f"\nDetected error type: {error_type}")
 
         # Load current files
@@ -373,7 +651,7 @@ def iterative_refine(client: Groq, args):
 
         # Build refinement prompt
         system_prompt, user_prompt = build_refinement_prompt(
-            current_files, result["error_summary"], error_type, iteration, example_path, previous_iteration_prompt
+            current_files, error_summary, error_type, iteration, example_path, previous_iteration_prompt
         )
 
         # Save the current prompt for use in the next iteration
@@ -387,8 +665,17 @@ def iterative_refine(client: Groq, args):
         # Call LLM to fix errors
         logger.info("Calling LLM for fixes...")
         try:
+            # Use the model from args if provided, otherwise use default
+            # For OpenAI provider, default to gpt-4o if not specified
+            model_to_use = args.model
+            if not model_to_use or model_to_use == MODEL_DEFAULT:
+                if args.provider == "openai":
+                    model_to_use = "gpt-4o-2024-08-06"
+                else:
+                    model_to_use = MODEL_DEFAULT
+
             resp = client.chat.completions.create(
-                model=args.model or MODEL_DEFAULT,
+                model=model_to_use,
                 messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
                 temperature=TEMPERATURE,
                 max_tokens=MAX_TOKENS,

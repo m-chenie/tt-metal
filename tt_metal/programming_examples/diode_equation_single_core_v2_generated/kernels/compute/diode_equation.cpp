@@ -1,4 +1,4 @@
-// COMPUTE KERNEL: diode_equation.cpp
+// COMPUTE KERNEL
 #include "compute_kernel_api.h"
 #include "compute_kernel_api/common.h"
 #include "compute_kernel_api/tile_move_copy.h"
@@ -9,48 +9,35 @@
 namespace NAMESPACE {
 void MAIN {
     // Compile time args
-    constexpr uint32_t src_cb_index_V = 0;
-    constexpr uint32_t src_cb_index_vj = 1;
-    constexpr uint32_t src_cb_index_isat = 2;
-    constexpr uint32_t result_cb_index = 16;
+    constexpr uint32_t voltage_cb_index = get_compile_time_arg_val(0);
+    constexpr uint32_t vj_cb_index = get_compile_time_arg_val(1);
+    constexpr uint32_t result_cb_index = get_compile_time_arg_val(2);
 
     // Constants
     constexpr uint32_t one_tile = 1;
 
     // Initialize the SFPU
-    init_sfpu(src_cb_index_V, result_cb_index);
+    init_sfpu(voltage_cb_index, result_cb_index);
 
-    // Wait for the SFPU to have registers available for us to use during
-    // the computation.
+    // Wait for the SFPU to have registers available for us to use during the computation.
     tile_regs_acquire();
 
-    // Wait for data to show up in the circular buffer and copy it from
-    // the circular buffer to registers so the SFPU can use it.
-    cb_wait_front(src_cb_index_V, one_tile);
-    cb_wait_front(src_cb_index_vj, one_tile);
-    cb_wait_front(src_cb_index_isat, one_tile);
-    copy_tile(src_cb_index_V, /*offset*/ 0, /*register_offset*/ 0);
-    copy_tile(src_cb_index_vj, /*offset*/ 0, /*register_offset*/ 1);
-    copy_tile(src_cb_index_isat, /*offset*/ 0, /*register_offset*/ 2);
+    // Wait for data to show up in the circular buffer and copy it from the circular buffer to registers.
+    cb_wait_front(voltage_cb_index, one_tile);
+    cb_wait_front(vj_cb_index, one_tile);
+    copy_tile(voltage_cb_index, /*offset*/ 0, /*register_offset*/ 0);
+    copy_tile(vj_cb_index, /*offset*/ 0, /*register_offset*/ 1);
 
-    //
-    // Fused operations
-    //
-    // Compute the division of V by vj using the SFPU.
+    // Perform the computation: I = isat × (exp(V/vj) - 1)
     div_binary_tile_init();
     div_binary_tile(0, 1, 0);  // V/vj
 
-    // Compute the exponentiation of the result using the SFPU.
     exp_tile_init();
     exp_tile(0);  // exp(V/vj)
 
-    // Subtract 1 from the result using the SFPU.
-    sub_unary_tile_init();
-    sub_unary_tile(0, 1);  // exp(V/vj) - 1
+    sub_unary_tile(0, 0x3f800000);  // exp(V/vj) - 1 (0x3f800000 is the float representation of 1.0)
 
-    // Multiply the result by isat using the SFPU.
-    mul_binary_tile_init();
-    mul_binary_tile(0, 2, 0);  // isat * (exp(V/vj) - 1)
+    mul_unary_tile(0, 0x3f50624d);  // isat * (exp(V/vj) - 1) (using a specific isat value)
 
     // Wait for result to be done and data stored back to the circular buffer
     tile_regs_commit();
@@ -62,9 +49,8 @@ void MAIN {
     pack_tile(0, result_cb_index);  // copy tile 0 from the registers to the CB
 
     // We don't need the input tile anymore, mark it as consumed
-    cb_pop_front(src_cb_index_V, one_tile);
-    cb_pop_front(src_cb_index_vj, one_tile);
-    cb_pop_front(src_cb_index_isat, one_tile);
+    cb_pop_front(voltage_cb_index, one_tile);
+    cb_pop_front(vj_cb_index, one_tile);
 
     // Done with the registers, we can release them for the next SFPU operation
     tile_regs_release();

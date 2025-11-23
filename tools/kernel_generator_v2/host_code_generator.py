@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import logging
-from groq import Groq
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 
 from config import MODEL_DEFAULT, TEMPERATURE, MAX_TOKENS
 from prompt_builder import build_host_system_prompt, build_host_user_prompt
@@ -11,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class HostCodeGenerator:
-    def __init__(self, client: Groq):
+    def __init__(self, client: Any):
         self.client = client
 
     def generate(
