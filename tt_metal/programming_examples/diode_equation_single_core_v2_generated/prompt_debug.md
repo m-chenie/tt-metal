@@ -22,6 +22,34 @@ CRITICAL CONSTRAINTS FOR SFPU OPERATIONS:
 
 
 
+INPUT CONFIGURATION:
+
+- Variable inputs (from DRAM): V
+
+- Constant inputs (initialize in reader kernel using float_to_bfloat16):
+
+  * Vj = 1.0
+
+  * Isat = 1.0
+
+  * ones = 1.0
+
+
+
+CIRCULAR BUFFER LAYOUT:
+
+- CB_0: V (variable input from DRAM)
+
+- CB_1: Vj (constant, initialized in reader)
+
+- CB_2: Isat (constant, initialized in reader)
+
+- CB_3: 1.0 (constant, initialized in reader)
+
+- CB_16: output result
+
+
+
 ## Relevant API Functions
 
 ```cpp
@@ -520,9 +548,14 @@ Generate TT-Metal kernels for diode current equation (I = isat × (exp(V/vj) - 1
 Requirements:
 - Emit exactly three separate code blocks in your response
 - Label each block clearly: COMPUTE, READER, WRITER
-- Use standard circular buffer layout: CB_0/CB_1 for inputs, CB_16 for output
-- Compute kernel: Implement the operation: I = isat × (exp(V/vj) - 1). Use appropriate SFPU operations from the examples. Follow the pattern: initialize operations, wait for inputs, acquire registers, perform computation, pack result, release registers
-- Reader kernel: Read input tiles from DRAM using NOC async operations. Use noc_async_read with barriers
+- Circular buffer layout (MUST follow exactly):
+  * CB_0: V (variable input from DRAM)
+  * CB_1: Vj (constant, initialized in reader)
+  * CB_2: Isat (constant, initialized in reader)
+  * CB_3: 1.0 (constant, initialized in reader)
+  * CB_16: output result
+- Compute kernel: Implement the formula: I = isat × (exp(V/vj) - 1). Mathematical steps: divide V by vj, exponentiate result, subtract 1, multiply by isat. DO NOT initialize constants in compute kernel.. Use appropriate SFPU operations from the examples. Follow the pattern: initialize operations, wait for inputs, acquire registers, perform computation, pack result, release registers
+- Reader kernel: Read V from DRAM into CB_0. Initialize constant tiles in reader kernel using float_to_bfloat16 pattern:   * Vj = 1.0 (in appropriate CB as specified above)   * Isat = 1.0 (in appropriate CB as specified above)   * ones = 1.0 (in appropriate CB as specified above). Use noc_async_read with barriers
 - Writer kernel: Write output tiles from CB_16 to DRAM using noc_async_write with barriers
 - Study the provided examples to identify the correct API functions and usage patterns
 - Follow TT-Metal conventions: cb_wait/reserve/push/pop discipline, NOC barriers, proper includes
@@ -554,115 +587,6 @@ You are an expert TT-Metal host code developer for Tenstorrent hardware.
 Target: diode_equation (diode current equation (I = isat × (exp(V/vj) - 1))), mode: single-core implementation.
 
 Generate correct, modern TT-Metal host code following the canonical structure and examples.
-
-
-
-## Canonical Host Code Structure
-
-Use this template as a guide for structuring your host code:
-
-```cpp
-// SPDX-FileCopyrightText: © 2025 Tenstorrent AI ULC
-// SPDX-License-Identifier: Apache-2.0
-
-// CORRECT HEADERS - use angle brackets for tt-metalium headers
-#include <tt-metalium/host_api.hpp>
-#include <tt-metalium/tensor_accessor_args.hpp>
-#include <tt-metalium/tilize_utils.hpp>
-#include <tt-metalium/constants.hpp>
-#include <tt-metalium/distributed.hpp>
-
-#include <cmath>
-#include <random>
-#include <cstdint>
-#include <vector>
-
-using namespace tt;
-using namespace tt::tt_metal;
-
-int main() {
-    // 1. DEVICE SETUP - use distributed::MeshDevice for modern TT-Metal
-    std::shared_ptr<distributed::MeshDevice> mesh_device =
-        distributed::MeshDevice::create_unit_mesh(0);
-
-    distributed::MeshCommandQueue& cq = mesh_device->mesh_command_queue();
-    distributed::MeshWorkload workload;
-    distributed::MeshCoordinateRange device_range =
-        distributed::MeshCoordinateRange(mesh_device->shape());
-    Program program = CreateProgram();
-
-    // 2. CORE RANGE SETUP
-    constexpr CoreCoord core = {0, 0};
-
-    // 3. INPUT DATA PREPARATION
-    std::vector<bfloat16> input_vec(constants::TILE_HW);
-    // ... fill input_vec with data ...
-
-    // Tilize input data for device
-    input_vec = tilize_nfaces(input_vec, constants::TILE_WIDTH, constants::TILE_HEIGHT);
-
-    // 4. DRAM BUFFER CREATION - use distributed::MeshBuffer
-    constexpr uint32_t single_tile_size =
-        sizeof(bfloat16) * constants::TILE_HEIGHT * constants::TILE_WIDTH;
-    distributed::DeviceLocalBufferConfig dram_config{
-        .page_size = single_tile_size,
-        .buffer_type = tt_metal::BufferType::DRAM
-    };
-    distributed::ReplicatedBufferConfig buffer_config{
-        .size = sizeof(bfloat16) * input_vec.size()
-    };
-    std::shared_ptr<distributed::MeshBuffer> input_buffer =
-        distributed::MeshBuffer::create(buffer_config, dram_config, mesh_device.get());
-
-    // Write input data to device
-    distributed::EnqueueWriteMeshBuffer(cq, input_buffer, input_vec, false);
-
-    // 5. CIRCULAR BUFFER SETUP
-    constexpr uint32_t cb_index = CBIndex::c_0;
-    CircularBufferConfig cb_config =
-        CircularBufferConfig(single_tile_size, {{cb_index, tt::DataFormat::Float16_b}})
-            .set_page_size(cb_index, single_tile_size);
-    tt_metal::CreateCircularBuffer(program, core, cb_config);
-
-    // 6. KERNEL CREATION
-    std::vector<uint32_t> compile_time_args = {cb_index};
-    TensorAccessorArgs(*input_buffer).append_to(compile_time_args);
-
-    KernelHandle kernel_id = CreateKernel(
-        program,
-        "path/to/kernel.cpp",
-        core,
-        tt::tt_metal::ReaderDataMovementConfig{compile_time_args}
-    );
-
-    // 7. RUNTIME ARGS
-    SetRuntimeArgs(program, kernel_id, core, {input_buffer->address()});
-
-    // 8. PROGRAM EXECUTION
-    workload.add_program(device_range, std::move(program));
-    distributed::EnqueueMeshWorkload(cq, workload, false);
-    distributed::Finish(cq);
-
-    // 9. READ RESULTS
-    std::vector<bfloat16> result_vec(constants::TILE_HW);
-    distributed::EnqueueReadMeshBuffer(cq, result_vec, output_buffer, true);
-
-    // Untilize results
-    result_vec = untilize_nfaces(result_vec, constants::TILE_WIDTH, constants::TILE_HEIGHT);
-
-    // 10. CLEANUP
-    mesh_device->close();
-
-    return 0;
-}
-```
-
-KEY POINTS:
-- Use `<tt-metalium/header.hpp>` NOT "tt_metal/header.hpp"
-- Use `distributed::MeshDevice` NOT `Device`
-- Use `distributed::MeshBuffer::create()` NOT `Buffer::create()`
-- Use `distributed::EnqueueWriteMeshBuffer()` NOT `EnqueueWriteBuffer()`
-- All distributed APIs are in the `distributed::` namespace
 
 
 
@@ -1145,8 +1069,6 @@ CRITICAL REQUIREMENTS:
 
 - All distributed APIs require `distributed::` namespace prefix
 
-- Follow the canonical template structure exactly
-
 - CMakeLists.txt MUST include: find_package(TT-Metalium) and target_link_libraries(...TT::Metalium)
 ```
 
@@ -1155,7 +1077,6 @@ CRITICAL REQUIREMENTS:
 Generate complete host code (.cpp file) AND CMakeLists.txt for diode current equation (I = isat × (exp(V/vj) - 1)) (single-core).
 
 Requirements:
-- Follow the canonical template structure EXACTLY
 - Use correct headers: `#include <tt-metalium/host_api.hpp>` with angle brackets
 - Use `distributed::MeshDevice::create_unit_mesh()` for device setup
 - Create DRAM buffers using `distributed::MeshBuffer::create()`

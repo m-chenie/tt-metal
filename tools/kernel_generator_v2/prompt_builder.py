@@ -23,6 +23,30 @@ def build_system_prompt(op: str, core_mode: str, retrieved: List[Dict]) -> str:
         parts.append("- ALL computation MUST use SFPU operations (element-wise on DST registers)")
         parts.append("- DO NOT create DRAM buffers for scalar constants - initialize them directly in circular buffers")
         parts.append("- Follow the sfpu_eltwise_chain pattern for constant initialization in reader kernel")
+
+        # Add explicit input/constant specification if available
+        variable_inputs = op_cfg.get("variable_inputs", [])
+        constant_inputs = op_cfg.get("constant_inputs", {})
+        cb_layout = op_cfg.get("circular_buffers", {})
+
+        if variable_inputs or constant_inputs:
+            parts.append("")
+            parts.append("INPUT CONFIGURATION:")
+
+            if variable_inputs:
+                parts.append(f"- Variable inputs (from DRAM): {', '.join(variable_inputs)}")
+
+            if constant_inputs:
+                parts.append("- Constant inputs (initialize in reader kernel using float_to_bfloat16):")
+                for const_name, const_val in constant_inputs.items():
+                    parts.append(f"  * {const_name} = {const_val}")
+
+            if cb_layout:
+                parts.append("")
+                parts.append("CIRCULAR BUFFER LAYOUT:")
+                for cb_id, cb_desc in cb_layout.items():
+                    parts.append(f"- {cb_id}: {cb_desc}")
+
         parts.append("")
 
     # Deduplicate by path (keep first occurrence)
@@ -104,21 +128,33 @@ def build_kernel_user_prompt(op: str, core_mode: str) -> str:
 
     # Build requirements based on operation type WITHOUT prescribing specific API calls
     if op_type == "sfpu_chain":
-        # Get formula and inputs from config
+        # Get formula and config details
         formula = op_cfg.get("formula", op_desc)
         math_steps = op_cfg.get("mathematical_steps", "")
-        inputs = op_cfg.get("inputs", [])
-        constants = op_cfg.get("constants", [])
+        variable_inputs = op_cfg.get("variable_inputs", [])
+        constant_inputs = op_cfg.get("constant_inputs", {})
+        cb_layout = op_cfg.get("circular_buffers", {})
 
-        # Describe WHAT to compute, not HOW
-        if inputs and constants:
-            cb_desc = f"Circular buffers: CB_0 for {inputs[0]}, CB_1 for {inputs[1]}, CB_2 for constant {constants[0]}, CB_16 for output"
-            compute_desc = f"Implement the formula: {formula}. Mathematical steps: {math_steps}"
-            reader_desc = f"Read {inputs[0]} and {inputs[1]} tiles from DRAM. Initialize CB_2 with the constant {constants[0]} value"
+        # Build circular buffer description from config
+        if cb_layout:
+            cb_lines = ["Circular buffer layout (MUST follow exactly):"]
+            for cb_id, cb_desc_text in cb_layout.items():
+                cb_lines.append(f"  * {cb_id}: {cb_desc_text}")
+            cb_desc = "\n".join(cb_lines)
         else:
             cb_desc = "Use standard circular buffer layout: CB_0/CB_1 for inputs, CB_16 for output"
-            compute_desc = f"Implement the operation: {formula}"
+
+        # Build reader description
+        if variable_inputs and constant_inputs:
+            reader_parts = [f"Read {variable_inputs[0]} from DRAM into CB_0."]
+            reader_parts.append(f"Initialize constant tiles in reader kernel using float_to_bfloat16 pattern:")
+            for const_name, const_val in constant_inputs.items():
+                reader_parts.append(f"  * {const_name} = {const_val} (in appropriate CB as specified above)")
+            reader_desc = " ".join(reader_parts)
+        else:
             reader_desc = "Read input tiles from DRAM using NOC async operations"
+
+        compute_desc = f"Implement the formula: {formula}. Mathematical steps: {math_steps}. DO NOT initialize constants in compute kernel."
 
         requirements = f"""- {cb_desc}
 - Compute kernel: {compute_desc}. Use appropriate SFPU operations from the examples. Follow the pattern: initialize operations, wait for inputs, acquire registers, perform computation, pack result, release registers
@@ -165,7 +201,7 @@ def build_host_system_prompt(op: str, core_mode: str, host_examples: List[Dict])
     2. Complete host code examples
     3. Host API signatures extracted from examples
     """
-    from host_api_retriever import retrieve_host_api_signatures, format_host_api_section, create_host_template
+    from host_api_retriever import retrieve_host_api_signatures, format_host_api_section
 
     op_desc = OPERATIONS[op]["description"]
     op_cfg = OPERATIONS[op]

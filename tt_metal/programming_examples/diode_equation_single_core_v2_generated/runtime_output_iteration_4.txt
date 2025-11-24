@@ -1,0 +1,1126 @@
+=== STDOUT ===
+2025-11-24 11:27:02.854 | info     |             UMD | Starting topology discovery. (topology_discovery.cpp:69)
+2025-11-24 11:27:02.887 | info     |             UMD | Established firmware bundle version: 18.12.0 (topology_discovery.cpp:369)
+2025-11-24 11:27:02.887 | info     |             UMD | Established ETH FW version: 7.1.0 (topology_discovery_wormhole.cpp:324)
+2025-11-24 11:27:02.909 | info     |             UMD | Completed topology discovery. (topology_discovery.cpp:73)
+2025-11-24 11:27:02.921 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:209)
+2025-11-24 11:27:02.921 | info     |             UMD | Starting topology discovery. (topology_discovery.cpp:69)
+2025-11-24 11:27:02.948 | info     |             UMD | Established firmware bundle version: 18.12.0 (topology_discovery.cpp:369)
+2025-11-24 11:27:02.948 | info     |             UMD | Established ETH FW version: 7.1.0 (topology_discovery_wormhole.cpp:324)
+2025-11-24 11:27:02.969 | info     |             UMD | Completed topology discovery. (topology_discovery.cpp:73)
+2025-11-24 11:27:02.980 | info     |             UMD | Starting topology discovery. (topology_discovery.cpp:69)
+2025-11-24 11:27:03.043 | info     |             UMD | Established firmware bundle version: 18.12.0 (topology_discovery.cpp:369)
+2025-11-24 11:27:03.044 | info     |             UMD | Established ETH FW version: 7.1.0 (topology_discovery_wormhole.cpp:324)
+2025-11-24 11:27:03.100 | info     |             UMD | Completed topology discovery. (topology_discovery.cpp:73)
+2025-11-24 11:27:03.111 | info     |             UMD | Harvesting mask for chip 3 is 0x240 (NOC0: 0x240, simulated harvesting mask: 0x0). (cluster.cpp:357)
+2025-11-24 11:27:03.183 | info     |             UMD | Harvesting mask for chip 2 is 0x240 (NOC0: 0x240, simulated harvesting mask: 0x0). (cluster.cpp:357)
+2025-11-24 11:27:03.196 | info     |             UMD | Harvesting mask for chip 1 is 0x208 (NOC0: 0x208, simulated harvesting mask: 0x0). (cluster.cpp:357)
+2025-11-24 11:27:03.207 | info     |             UMD | Harvesting mask for chip 0 is 0x202 (NOC0: 0x202, simulated harvesting mask: 0x0). (cluster.cpp:357)
+2025-11-24 11:27:03.219 | info     |             UMD | Harvesting mask for chip 7 is 0x201 (NOC0: 0x201, simulated harvesting mask: 0x0). (cluster.cpp:357)
+2025-11-24 11:27:03.232 | info     |             UMD | Harvesting mask for chip 6 is 0x201 (NOC0: 0x201, simulated harvesting mask: 0x0). (cluster.cpp:357)
+2025-11-24 11:27:03.245 | info     |             UMD | Harvesting mask for chip 5 is 0x220 (NOC0: 0x220, simulated harvesting mask: 0x0). (cluster.cpp:357)
+2025-11-24 11:27:03.258 | info     |             UMD | Harvesting mask for chip 4 is 0x240 (NOC0: 0x240, simulated harvesting mask: 0x0). (cluster.cpp:357)
+2025-11-24 11:27:03.271 | info     |             UMD | Opening local chip ids/PCIe ids: {0, 1, 2, 3}/[2, 0, 1, 3] and remote chip ids {4, 5, 6, 7} (cluster.cpp:202)
+2025-11-24 11:27:03.271 | info     |             UMD | IOMMU: disabled (cluster.cpp:178)
+2025-11-24 11:27:03.271 | info     |             UMD | KMD version: 2.4.1 (cluster.cpp:181)
+2025-11-24 11:27:03.279 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x799f80000000 and size 0x40000000 pinned to physical address 0x41c0000000 and mapped to noc address 0x800000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.279 | info     |             UMD | Mapped hugepage 0x41c0000000 to NOC address 0x800000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.280 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x799f40000000 and size 0x40000000 pinned to physical address 0x4200000000 and mapped to noc address 0x840000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.280 | info     |             UMD | Mapped hugepage 0x4200000000 to NOC address 0x840000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.281 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x799f00000000 and size 0x40000000 pinned to physical address 0x4240000000 and mapped to noc address 0x880000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.281 | info     |             UMD | Mapped hugepage 0x4240000000 to NOC address 0x880000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.281 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x799ec0000000 and size 0x30000000 pinned to physical address 0x4280000000 and mapped to noc address 0x8c0000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.281 | info     |             UMD | Mapped hugepage 0x4280000000 to NOC address 0x8c0000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.282 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a080000000 and size 0x40000000 pinned to physical address 0x280000000 and mapped to noc address 0x800000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.282 | info     |             UMD | Mapped hugepage 0x280000000 to NOC address 0x800000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.283 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a040000000 and size 0x40000000 pinned to physical address 0x2c0000000 and mapped to noc address 0x840000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.283 | info     |             UMD | Mapped hugepage 0x2c0000000 to NOC address 0x840000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.284 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a000000000 and size 0x40000000 pinned to physical address 0x300000000 and mapped to noc address 0x880000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.284 | info     |             UMD | Mapped hugepage 0x300000000 to NOC address 0x880000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.284 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x799fc0000000 and size 0x30000000 pinned to physical address 0x340000000 and mapped to noc address 0x8c0000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.284 | info     |             UMD | Mapped hugepage 0x340000000 to NOC address 0x8c0000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.285 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a1c0000000 and size 0x40000000 pinned to physical address 0x180000000 and mapped to noc address 0x800000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.285 | info     |             UMD | Mapped hugepage 0x180000000 to NOC address 0x800000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.286 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a180000000 and size 0x40000000 pinned to physical address 0x1c0000000 and mapped to noc address 0x840000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.286 | info     |             UMD | Mapped hugepage 0x1c0000000 to NOC address 0x840000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.287 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a140000000 and size 0x40000000 pinned to physical address 0x200000000 and mapped to noc address 0x880000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.287 | info     |             UMD | Mapped hugepage 0x200000000 to NOC address 0x880000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.288 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a100000000 and size 0x30000000 pinned to physical address 0x240000000 and mapped to noc address 0x8c0000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.288 | info     |             UMD | Mapped hugepage 0x240000000 to NOC address 0x8c0000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.289 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a2c0000000 and size 0x40000000 pinned to physical address 0x40c0000000 and mapped to noc address 0x800000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.289 | info     |             UMD | Mapped hugepage 0x40c0000000 to NOC address 0x800000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.289 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a280000000 and size 0x40000000 pinned to physical address 0x4100000000 and mapped to noc address 0x840000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.289 | info     |             UMD | Mapped hugepage 0x4100000000 to NOC address 0x840000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.290 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a240000000 and size 0x40000000 pinned to physical address 0x4140000000 and mapped to noc address 0x880000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.290 | info     |             UMD | Mapped hugepage 0x4140000000 to NOC address 0x880000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.291 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a200000000 and size 0x30000000 pinned to physical address 0x4180000000 and mapped to noc address 0x8c0000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.291 | info     |             UMD | Mapped hugepage 0x4180000000 to NOC address 0x8c0000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper mapping start (mesh=0): n_log=8, n_phys=8, log_deg_hist={2:4, 3:4}, phys_deg_hist={2:4, 3:4} (topology_mapper.cpp:728)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: First logical node li=0 (fabric_node=(M0, D0)) has mesh rank 0 (topology_mapper.cpp:1400)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: Found 8 physical ASIC candidates for first logical node li=0 (fabric_node=(M0, D0)) with matching mesh rank 0, will try each as first pinning (topology_mapper.cpp:1433)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: Trying first pinning 1/8: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=0 (asic_id=10226851854) (hostname=tauceti) (topology_mapper.cpp:1489)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: First pinning 1/8 failed: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=0 (asic_id=10226851854) (topology_mapper.cpp:1522)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: Trying first pinning 2/8: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=1 (asic_id=10226851885) (hostname=tauceti) (topology_mapper.cpp:1489)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: First pinning 2/8 failed: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=1 (asic_id=10226851885) (topology_mapper.cpp:1522)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: Trying first pinning 3/8: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=2 (asic_id=10226851927) (hostname=tauceti) (topology_mapper.cpp:1489)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: First pinning 3/8 failed: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=2 (asic_id=10226851927) (topology_mapper.cpp:1522)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: Trying first pinning 4/8: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=3 (asic_id=10226852052) (hostname=tauceti) (topology_mapper.cpp:1489)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: First pinning 4/8 failed: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=3 (asic_id=10226852052) (topology_mapper.cpp:1522)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: Trying first pinning 5/8: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=4 (asic_id=14521819150) (hostname=tauceti) (topology_mapper.cpp:1489)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: Successfully found mapping with first pinning 5/8: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=4 (asic_id=14521819150) (topology_mapper.cpp:1510)
+2025-11-24 11:27:03.410 | info     |           Metal | While initializing device 0, active ethernet dispatch core (x=21,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.410 | info     |           Metal | While initializing device 0, active ethernet dispatch core (x=18,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.410 | info     |           Metal | While initializing device 0, active ethernet dispatch core (x=25,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.410 | info     |           Metal | While initializing device 0, active ethernet dispatch core (x=22,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.410 | info     |           Metal | While initializing device 0, active ethernet dispatch core (x=18,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.410 | info     |           Metal | While initializing device 0, active ethernet dispatch core (x=25,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.410 | critical |          Always | TT_FATAL: Read unexpected run_mailbox value from core (x=25,y=16) (assert.hpp:103)
+2025-11-24 11:27:03.412 | warning  |          Always | Detected dispatch kernels still running but failed to complete an early exit. This may happen from time to time following a reset, continuing to FW initialization... (metal_context.cpp:703)
+2025-11-24 11:27:03.418 | info     |           Metal | While initializing device 1, active ethernet dispatch core (x=21,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.418 | info     |           Metal | While initializing device 1, active ethernet dispatch core (x=22,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.418 | info     |           Metal | While initializing device 1, active ethernet dispatch core (x=18,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.418 | info     |           Metal | While initializing device 1, active ethernet dispatch core (x=25,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.418 | info     |           Metal | While initializing device 1, active ethernet dispatch core (x=21,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.418 | info     |           Metal | While initializing device 1, active ethernet dispatch core (x=22,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.418 | critical |          Always | TT_FATAL: Read unexpected run_mailbox value from core (x=22,y=16) (assert.hpp:103)
+2025-11-24 11:27:03.419 | warning  |          Always | Detected dispatch kernels still running but failed to complete an early exit. This may happen from time to time following a reset, continuing to FW initialization... (metal_context.cpp:703)
+2025-11-24 11:27:03.426 | info     |           Metal | While initializing device 2, active ethernet dispatch core (x=21,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.426 | info     |           Metal | While initializing device 2, active ethernet dispatch core (x=18,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.426 | info     |           Metal | While initializing device 2, active ethernet dispatch core (x=25,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.426 | info     |           Metal | While initializing device 2, active ethernet dispatch core (x=22,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.426 | info     |           Metal | While initializing device 2, active ethernet dispatch core (x=18,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.426 | info     |           Metal | While initializing device 2, active ethernet dispatch core (x=25,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.426 | critical |          Always | TT_FATAL: Read unexpected run_mailbox value from core (x=25,y=16) (assert.hpp:103)
+2025-11-24 11:27:03.427 | warning  |          Always | Detected dispatch kernels still running but failed to complete an early exit. This may happen from time to time following a reset, continuing to FW initialization... (metal_context.cpp:703)
+2025-11-24 11:27:03.434 | info     |           Metal | While initializing device 3, active ethernet dispatch core (x=21,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.434 | info     |           Metal | While initializing device 3, active ethernet dispatch core (x=22,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.434 | info     |           Metal | While initializing device 3, active ethernet dispatch core (x=18,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.434 | info     |           Metal | While initializing device 3, active ethernet dispatch core (x=25,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.434 | info     |           Metal | While initializing device 3, active ethernet dispatch core (x=21,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.434 | info     |           Metal | While initializing device 3, active ethernet dispatch core (x=22,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.434 | critical |          Always | TT_FATAL: Read unexpected run_mailbox value from core (x=22,y=16) (assert.hpp:103)
+2025-11-24 11:27:03.435 | warning  |          Always | Detected dispatch kernels still running but failed to complete an early exit. This may happen from time to time following a reset, continuing to FW initialization... (metal_context.cpp:703)
+2025-11-24 11:27:03.441 | info     |           Metal | While initializing device 4, active ethernet dispatch core (x=21,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.441 | info     |           Metal | While initializing device 4, active ethernet dispatch core (x=22,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.441 | info     |           Metal | While initializing device 4, active ethernet dispatch core (x=18,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.442 | info     |           Metal | While initializing device 4, active ethernet dispatch core (x=25,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.442 | critical |          Always | TT_FATAL: Read unexpected run_mailbox value from core (x=25,y=16) (assert.hpp:103)
+2025-11-24 11:27:03.443 | warning  |          Always | Detected dispatch kernels still running but failed to complete an early exit. This may happen from time to time following a reset, continuing to FW initialization... (metal_context.cpp:703)
+2025-11-24 11:27:03.556 | info     |           Metal | While initializing device 5, active ethernet dispatch core (x=21,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.556 | info     |           Metal | While initializing device 5, active ethernet dispatch core (x=22,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.556 | info     |           Metal | While initializing device 5, active ethernet dispatch core (x=18,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.556 | info     |           Metal | While initializing device 5, active ethernet dispatch core (x=25,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.557 | critical |          Always | TT_FATAL: Read unexpected run_mailbox value from core (x=25,y=16) (assert.hpp:103)
+2025-11-24 11:27:03.558 | warning  |          Always | Detected dispatch kernels still running but failed to complete an early exit. This may happen from time to time following a reset, continuing to FW initialization... (metal_context.cpp:703)
+2025-11-24 11:27:03.680 | info     |           Metal | While initializing device 6, active ethernet dispatch core (x=21,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.680 | info     |           Metal | While initializing device 6, active ethernet dispatch core (x=22,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.680 | info     |           Metal | While initializing device 6, active ethernet dispatch core (x=18,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.681 | info     |           Metal | While initializing device 6, active ethernet dispatch core (x=25,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.681 | critical |          Always | TT_FATAL: Read unexpected run_mailbox value from core (x=25,y=16) (assert.hpp:103)
+2025-11-24 11:27:03.683 | warning  |          Always | Detected dispatch kernels still running but failed to complete an early exit. This may happen from time to time following a reset, continuing to FW initialization... (metal_context.cpp:703)
+2025-11-24 11:27:03.805 | info     |           Metal | While initializing device 7, active ethernet dispatch core (x=21,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.806 | info     |           Metal | While initializing device 7, active ethernet dispatch core (x=22,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.806 | info     |           Metal | While initializing device 7, active ethernet dispatch core (x=18,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.806 | info     |           Metal | While initializing device 7, active ethernet dispatch core (x=25,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.806 | critical |          Always | TT_FATAL: Read unexpected run_mailbox value from core (x=25,y=16) (assert.hpp:103)
+2025-11-24 11:27:03.808 | warning  |          Always | Detected dispatch kernels still running but failed to complete an early exit. This may happen from time to time following a reset, continuing to FW initialization... (metal_context.cpp:703)
+2025-11-24 11:27:03.920 | warning  |           Metal | Opening subset of mmio devices slows down UMD read/write to remote chips. If opening more devices, consider using CreateDevices API. (device_pool.cpp:316)
+2025-11-24 11:27:04.435 | error    |    BuildKernels | ncrisc compile failure -- cmd: cd /home/m48chen/.cache/tt-metal-cache/5b7a87cca6/11358605694596585868/kernels/reader_binary_1_tile/6944381047652148987/ncrisc/ && /home/m48chen/tt-metal/runtime/sfpi/compiler/bin/riscv-tt-elf-g++ -O2 -std=c++17 -flto=auto -ffast-math -fno-exceptions -g -MMD -fno-use-cxa-atexit -Wall -Werror -Wno-unknown-pragmas -Wno-deprecated-declarations -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable -Wno-unused-function -mcpu=tt-wh -fno-tree-loop-distribute-patterns -I. -I.. -I/home/m48chen/tt-metal/ -I/home/m48chen/tt-metal/ttnn -I/home/m48chen/tt-metal/ttnn/cpp -I/home/m48chen/tt-metal/tt_metal -I/home/m48chen/tt-metal/tt_metal/include -I/home/m48chen/tt-metal/tt_metal/hw/inc -I/home/m48chen/tt-metal/tt_metal/hostdevcommon/api -I/home/m48chen/tt-metal/tt_metal/hw/inc/debug -I/home/m48chen/tt-metal/tt_metal/api/ -I/home/m48chen/tt-metal/tt_metal/api/tt-metalium/ -I/home/m48chen/tt-metal/tt_metal/hw/ckernels/wormhole_b0/metal/common -I/home/m48chen/tt-metal/tt_metal/hw/ckernels/wormhole_b0/metal/llk_io -I/home/m48chen/tt-metal/tt_metal/hw/inc/tt-1xx -I/home/m48chen/tt-metal/tt_metal/hw/inc/tt-1xx/wormhole -I/home/m48chen/tt-metal/tt_metal/hw/inc/tt-1xx/wormhole/wormhole_b0_defines -I/home/m48chen/tt-metal/tt_metal/hw/inc/tt-1xx/wormhole/noc -I/home/m48chen/tt-metal/tt_metal/lite_fabric/hw/inc/wormhole -I/home/m48chen/tt-metal/tt_metal/third_party/tt_llk/tt_llk_wormhole_b0/common/inc -I/home/m48chen/tt-metal/tt_metal/third_party/tt_llk/tt_llk_wormhole_b0/llk_lib -I/home/m48chen/tt-metal/tt_metal/hw/firmware/src/tt-1xx -c -o ncrisck.o /home/m48chen/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc -DIS_NOT_POW2_NUM_DRAM_BANKS=1 -DIS_NOT_POW2_NUM_L1_BANKS=1 -DNUM_DRAM_BANKS=12 -DNUM_L1_BANKS=56 -DPCIE_NOC_X=0 -DPCIE_NOC_Y=3 -DTENSIX_FIRMWARE -DLOCAL_MEM_EN=0 -DROUTING_FW_ENABLED -DPROCESSOR_INDEX=1 -DCOMPILE_FOR_NCRISC -DARCH_WORMHOLE -DDISPATCH_MESSAGE_ADDR=4290183304 -DKERNEL_BUILD -DNOC_INDEX='0' -DNOC_MODE='0' -DKERNEL_COMPILE_TIME_ARGS=0,2  (build.cpp:60)
+2025-11-24 11:27:04.435 | critical |          Always | TT_THROW: ncrisc build failed. Log: In file included from /home/m48chen/tt-metal/tt_metal/hw/inc/firmware_common.h:12,
+                 from /home/m48chen/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc:17:
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h: In instantiation of 'constexpr uint32_t get_ct_arg() [with long unsigned int Idx = 2; uint32_t = long unsigned int]':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:23:62:   required from 'constexpr const Flags<tensor_accessor::ArgConfig> TensorAccessorArgs<2>::args_config'
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:25:40:   required from 'constexpr const bool TensorAccessorArgs<2>::is_sharded'
+   25 |     static constexpr bool is_sharded = args_config.test(tensor_accessor::ArgConfig::Sharded);
+      |                                        ^~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:36:10:   required from 'struct TensorAccessorArgs<2>'
+   36 |         !is_sharded || !rank_is_crta || (rank_is_crta && tensor_shape_is_crta && shard_shape_is_crta),
+      |          ^~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:25:23: error: static assertion failed: Index out of range
+   25 |     static_assert(Idx < kernel_compile_time_args.size(), "Index out of range");
+      |                   ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:25:23: note: the comparison reduces to '(2 < 2)'
+In file included from /home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:8,
+                 from /home/m48chen/tt-metal/tt_metal/hw/inc/dataflow_api.h:28,
+                 from /home/m48chen/tt-metal/tt_metal/hw/inc/firmware_common.h:20:
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'struct TensorAccessorArgs<2>':
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:36:38: error: non-constant condition for static assertion
+   36 |         !is_sharded || !rank_is_crta || (rank_is_crta && tensor_shape_is_crta && shard_shape_is_crta),
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:39:43: error: non-constant condition for static assertion
+   39 |         !is_sharded || !num_banks_is_crta || (num_banks_is_crta && bank_coords_is_crta),
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'constexpr const uint32_t TensorAccessorArgs<2>::RankCT':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:64:50:   required from 'struct TensorAccessorArgs<2>'
+   64 |     static_assert(!is_sharded || rank_is_crta || RankCT > 0, "Rank must be greater than 0!");
+      |                                                  ^~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:62:62: error: inconsistent types 'int' and 'long unsigned int' deduced for lambda return type
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:50:20: note: in expansion of macro 'get_compile_time_arg_val'
+   50 |             return get_compile_time_arg_val(RankCTAOffset);
+      |                    ^~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h: In instantiation of 'constexpr uint32_t get_ct_arg() [with long unsigned int Idx = 3; uint32_t = long unsigned int]':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:50:20:   required from 'constexpr const uint32_t TensorAccessorArgs<2>::RankCT'
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:64:50:   required from 'struct TensorAccessorArgs<2>'
+   64 |     static_assert(!is_sharded || rank_is_crta || RankCT > 0, "Rank must be greater than 0!");
+      |                                                  ^~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:25:23: error: static assertion failed: Index out of range
+   25 |     static_assert(Idx < kernel_compile_time_args.size(), "Index out of range");
+      |                   ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:25:23: note: the comparison reduces to '(3 < 2)'
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'constexpr const uint32_t TensorAccessorArgs<2>::RankCT':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:64:50:   required from 'struct TensorAccessorArgs<2>'
+   64 |     static_assert(!is_sharded || rank_is_crta || RankCT > 0, "Rank must be greater than 0!");
+      |                                                  ^~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:52:6: error: 'TensorAccessorArgs<2>::<lambda()>' called in a constant expression
+   46 |     static constexpr uint32_t RankCT = [] {
+      |                                        ~~~~
+   47 |         if constexpr (!is_sharded || rank_is_crta) {
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   48 |             return 0;
+      |             ~~~~~~~~~
+   49 |         } else {
+      |         ~~~~~~~~
+   50 |             return get_compile_time_arg_val(RankCTAOffset);
+      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   51 |         }
+      |         ~
+   52 |     }();
+      |     ~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:46:40: note: 'TensorAccessorArgs<2>::<lambda()>' is not usable as a 'constexpr' function because:
+   46 |     static constexpr uint32_t RankCT = [] {
+      |                                        ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'struct TensorAccessorArgs<2>':
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:64:47: error: non-constant condition for static assertion
+   64 |     static_assert(!is_sharded || rank_is_crta || RankCT > 0, "Rank must be greater than 0!");
+      |                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'constexpr const uint32_t TensorAccessorArgs<2>::NumBanksCT':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:65:55:   required from 'struct TensorAccessorArgs<2>'
+   65 |     static_assert(!is_sharded || num_banks_is_crta || NumBanksCT > 0, "Number of banks must be greater than 0!");
+      |                                                       ^~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:62:62: error: no matching function for call to 'get_ct_arg<TensorAccessorArgs<2>::NumBanksCTAOffset>()'
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:58:20: note: in expansion of macro 'get_compile_time_arg_val'
+   58 |             return get_compile_time_arg_val(NumBanksCTAOffset);
+      |                    ^~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:62:62: note: there is 1 candidate
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:58:20: note: in expansion of macro 'get_compile_time_arg_val'
+   58 |             return get_compile_time_arg_val(NumBanksCTAOffset);
+      |                    ^~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:24:20: note: candidate 1: 'template<long unsigned int Idx> constexpr uint32_t get_ct_arg()'
+   24 | constexpr uint32_t get_ct_arg() {
+      |                    ^~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:24:20: note: template argument deduction/substitution failed:
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:60:6: error: 'TensorAccessorArgs<2>::<lambda()>' called in a constant expression
+   54 |     static constexpr uint32_t NumBanksCT = [] {
+      |                                            ~~~~
+   55 |         if constexpr (!is_sharded || num_banks_is_crta) {
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   56 |             return 0;
+      |             ~~~~~~~~~
+   57 |         } else {
+      |         ~~~~~~~~
+   58 |             return get_compile_time_arg_val(NumBanksCTAOffset);
+      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   59 |         }
+      |         ~
+   60 |     }();
+      |     ~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:54:44: note: 'TensorAccessorArgs<2>::<lambda()>' is not usable as a 'constexpr' function because:
+   54 |     static constexpr uint32_t NumBanksCT = [] {
+      |                                            ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'struct TensorAccessorArgs<2>':
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:65:52: error: non-constant condition for static assertion
+   65 |     static_assert(!is_sharded || num_banks_is_crta || NumBanksCT > 0, "Number of banks must be greater than 0!");
+      |                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~
+In file included from ../kernel_includes.hpp:1,
+                 from /home/m48chen/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc:22:
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp: In function 'void kernel_main()':
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: error: class template argument deduction failed:
+   28 |         TensorAccessor(interleaved_accessor_args, input_buffer_addr, input_data_tile_size_bytes);
+      |                                                                                                ^
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: error: no matching function for call to 'TensorAccessor(const TensorAccessorArgs<2>&, const uint32_t&, const uint32_t&)'
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: note: there are 6 candidates
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:74:5: note: candidate 1: 'template<class DSpecT, unsigned int CTA_OFFSET, unsigned int CRTA_OFFSET> TensorAccessor(const TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>&, size_t, uint32_t) -> TensorAccessor<DSpecT>'
+   74 |     TensorAccessor(
+      |     ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:74:5: note: template argument deduction/substitution failed:
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: note:   couldn't deduce template parameter 'DSpecT'
+   28 |         TensorAccessor(interleaved_accessor_args, input_buffer_addr, input_data_tile_size_bytes);
+      |                                                                                                ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:70:5: note: candidate 2: 'template<class DSpecT, class DSpec_, typename std::enable_if<DSpec_::is_static, int>::type <anonymous> > TensorAccessor(size_t, uint32_t) -> TensorAccessor<DSpecT>'
+   70 |     TensorAccessor(const size_t bank_base_address_in = 0, uint32_t page_size_in = 0) :
+      |     ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:70:5: note: candidate expects 2 arguments, 3 provided
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:65:24: note: candidate 3: 'template<class DSpecT, class DSpec_, typename std::enable_if<is_same_v<typename std::decay<_Tp2>::type, DSpecT>, int>::type <anonymous> > TensorAccessor(DSpec_&&, size_t, uint32_t) -> TensorAccessor<DSpecT>'
+   65 |     constexpr explicit TensorAccessor(
+      |                        ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:65:24: note: template argument deduction/substitution failed:
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: note:   couldn't deduce template parameter 'DSpecT'
+   28 |         TensorAccessor(interleaved_accessor_args, input_buffer_addr, input_data_tile_size_bytes);
+      |                                                                                                ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:51:8: note: candidate 4: 'template<class DSpecT> TensorAccessor(TensorAccessor<DSpecT>) -> TensorAccessor<DSpecT>'
+   51 | struct TensorAccessor {
+      |        ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:51:8: note: candidate expects 1 argument, 3 provided
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:410:1: note: candidate 5: 'template<long unsigned int RankCT, long unsigned int NumBanksCT, class TensorShapeWrapper, class ShardShapeWrapper, class BankCoordsWrapper, bool IsInterleaved, bool IsDram> TensorAccessor(tensor_accessor::DistributionSpec<RankCT, NumBanksCT, TensorShapeWrapper, ShardShapeWrapper, BankCoordsWrapper, IsInterleaved, IsDram>, size_t, uint32_t) -> TensorAccessor<tensor_accessor::DistributionSpec<RankCT, NumBanksCT, TensorShapeWrapper, ShardShapeWrapper, BankCoordsWrapper, IsInterleaved, IsDram> >'
+  410 | TensorAccessor(
+      | ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:410:1: note: template argument deduction/substitution failed:
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: note:   'TensorAccessorArgs<2>' is not derived from 'tensor_accessor::DistributionSpec<RankCT, NumBanksCT, TensorShapeWrapper, ShardShapeWrapper, BankCoordsWrapper, IsInterleaved, IsDram>'
+   28 |         TensorAccessor(interleaved_accessor_args, input_buffer_addr, input_data_tile_size_bytes);
+      |                                                                                                ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:380:1: note: candidate 6: 'template<unsigned int CTA_OFFSET, unsigned int CRTA_OFFSET> TensorAccessor(const TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>&, size_t, uint32_t) -> TensorAccessor<tensor_accessor::DistributionSpec<TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::RankCT, TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::NumBanksCT, typename tensor_accessor::ArrayWrapperTypeSelectorU32<(! TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::tensor_shape_is_crta), TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::TensorShapeCTAOffset, TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::RankCT>::type, typename tensor_accessor::ArrayWrapperTypeSelectorU32<(! TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::shard_shape_is_crta), TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::ShardShapeCTAOffset, TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::RankCT>::type, typename tensor_accessor::ArrayWrapperTypeSelectorPackedU16<(! TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::bank_coords_is_crta), TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::BankCoordsCTAOffset, TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::NumBanksCT>::type, (! TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::is_sharded), TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::is_dram> >'
+  380 | TensorAccessor(const TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>& args, size_t, uint32_t)
+      | ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:380:1: note: template argument deduction/substitution failed:
+ (assert.hpp:103)
+2025-11-24 11:27:04.439 | critical |          Always | TT_THROW: Failed to generate binaries for reader_binary_1_tile TT_THROW @ /home/m48chen/tt-metal/tt_metal/jit_build/build.cpp:64: tt::exception
+info:
+ncrisc build failed. Log: In file included from /home/m48chen/tt-metal/tt_metal/hw/inc/firmware_common.h:12,
+                 from /home/m48chen/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc:17:
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h: In instantiation of 'constexpr uint32_t get_ct_arg() [with long unsigned int Idx = 2; uint32_t = long unsigned int]':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:23:62:   required from 'constexpr const Flags<tensor_accessor::ArgConfig> TensorAccessorArgs<2>::args_config'
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:25:40:   required from 'constexpr const bool TensorAccessorArgs<2>::is_sharded'
+   25 |     static constexpr bool is_sharded = args_config.test(tensor_accessor::ArgConfig::Sharded);
+      |                                        ^~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:36:10:   required from 'struct TensorAccessorArgs<2>'
+   36 |         !is_sharded || !rank_is_crta || (rank_is_crta && tensor_shape_is_crta && shard_shape_is_crta),
+      |          ^~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:25:23: error: static assertion failed: Index out of range
+   25 |     static_assert(Idx < kernel_compile_time_args.size(), "Index out of range");
+      |                   ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:25:23: note: the comparison reduces to '(2 < 2)'
+In file included from /home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:8,
+                 from /home/m48chen/tt-metal/tt_metal/hw/inc/dataflow_api.h:28,
+                 from /home/m48chen/tt-metal/tt_metal/hw/inc/firmware_common.h:20:
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'struct TensorAccessorArgs<2>':
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:36:38: error: non-constant condition for static assertion
+   36 |         !is_sharded || !rank_is_crta || (rank_is_crta && tensor_shape_is_crta && shard_shape_is_crta),
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:39:43: error: non-constant condition for static assertion
+   39 |         !is_sharded || !num_banks_is_crta || (num_banks_is_crta && bank_coords_is_crta),
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'constexpr const uint32_t TensorAccessorArgs<2>::RankCT':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:64:50:   required from 'struct TensorAccessorArgs<2>'
+   64 |     static_assert(!is_sharded || rank_is_crta || RankCT > 0, "Rank must be greater than 0!");
+      |                                                  ^~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:62:62: error: inconsistent types 'int' and 'long unsigned int' deduced for lambda return type
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:50:20: note: in expansion of macro 'get_compile_time_arg_val'
+   50 |             return get_compile_time_arg_val(RankCTAOffset);
+      |                    ^~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h: In instantiation of 'constexpr uint32_t get_ct_arg() [with long unsigned int Idx = 3; uint32_t = long unsigned int]':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:50:20:   required from 'constexpr const uint32_t TensorAccessorArgs<2>::RankCT'
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:64:50:   required from 'struct TensorAccessorArgs<2>'
+   64 |     static_assert(!is_sharded || rank_is_crta || RankCT > 0, "Rank must be greater than 0!");
+      |                                                  ^~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:25:23: error: static assertion failed: Index out of range
+   25 |     static_assert(Idx < kernel_compile_time_args.size(), "Index out of range");
+      |                   ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:25:23: note: the comparison reduces to '(3 < 2)'
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'constexpr const uint32_t TensorAccessorArgs<2>::RankCT':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:64:50:   required from 'struct TensorAccessorArgs<2>'
+   64 |     static_assert(!is_sharded || rank_is_crta || RankCT > 0, "Rank must be greater than 0!");
+      |                                                  ^~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:52:6: error: 'TensorAccessorArgs<2>::<lambda()>' called in a constant expression
+   46 |     static constexpr uint32_t RankCT = [] {
+      |                                        ~~~~
+   47 |         if constexpr (!is_sharded || rank_is_crta) {
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   48 |             return 0;
+      |             ~~~~~~~~~
+   49 |         } else {
+      |         ~~~~~~~~
+   50 |             return get_compile_time_arg_val(RankCTAOffset);
+      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   51 |         }
+      |         ~
+   52 |     }();
+      |     ~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:46:40: note: 'TensorAccessorArgs<2>::<lambda()>' is not usable as a 'constexpr' function because:
+   46 |     static constexpr uint32_t RankCT = [] {
+      |                                        ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'struct TensorAccessorArgs<2>':
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:64:47: error: non-constant condition for static assertion
+   64 |     static_assert(!is_sharded || rank_is_crta || RankCT > 0, "Rank must be greater than 0!");
+      |                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'constexpr const uint32_t TensorAccessorArgs<2>::NumBanksCT':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:65:55:   required from 'struct TensorAccessorArgs<2>'
+   65 |     static_assert(!is_sharded || num_banks_is_crta || NumBanksCT > 0, "Number of banks must be greater than 0!");
+      |                                                       ^~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:62:62: error: no matching function for call to 'get_ct_arg<TensorAccessorArgs<2>::NumBanksCTAOffset>()'
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:58:20: note: in expansion of macro 'get_compile_time_arg_val'
+   58 |             return get_compile_time_arg_val(NumBanksCTAOffset);
+      |                    ^~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:62:62: note: there is 1 candidate
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:58:20: note: in expansion of macro 'get_compile_time_arg_val'
+   58 |             return get_compile_time_arg_val(NumBanksCTAOffset);
+      |                    ^~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:24:20: note: candidate 1: 'template<long unsigned int Idx> constexpr uint32_t get_ct_arg()'
+   24 | constexpr uint32_t get_ct_arg() {
+      |                    ^~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:24:20: note: template argument deduction/substitution failed:
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:60:6: error: 'TensorAccessorArgs<2>::<lambda()>' called in a constant expression
+   54 |     static constexpr uint32_t NumBanksCT = [] {
+      |                                            ~~~~
+   55 |         if constexpr (!is_sharded || num_banks_is_crta) {
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   56 |             return 0;
+      |             ~~~~~~~~~
+   57 |         } else {
+      |         ~~~~~~~~
+   58 |             return get_compile_time_arg_val(NumBanksCTAOffset);
+      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   59 |         }
+      |         ~
+   60 |     }();
+      |     ~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:54:44: note: 'TensorAccessorArgs<2>::<lambda()>' is not usable as a 'constexpr' function because:
+   54 |     static constexpr uint32_t NumBanksCT = [] {
+      |                                            ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'struct TensorAccessorArgs<2>':
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:65:52: error: non-constant condition for static assertion
+   65 |     static_assert(!is_sharded || num_banks_is_crta || NumBanksCT > 0, "Number of banks must be greater than 0!");
+      |                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~
+In file included from ../kernel_includes.hpp:1,
+                 from /home/m48chen/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc:22:
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp: In function 'void kernel_main()':
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: error: class template argument deduction failed:
+   28 |         TensorAccessor(interleaved_accessor_args, input_buffer_addr, input_data_tile_size_bytes);
+      |                                                                                                ^
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: error: no matching function for call to 'TensorAccessor(const TensorAccessorArgs<2>&, const uint32_t&, const uint32_t&)'
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: note: there are 6 candidates
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:74:5: note: candidate 1: 'template<class DSpecT, unsigned int CTA_OFFSET, unsigned int CRTA_OFFSET> TensorAccessor(const TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>&, size_t, uint32_t) -> TensorAccessor<DSpecT>'
+   74 |     TensorAccessor(
+      |     ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:74:5: note: template argument deduction/substitution failed:
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: note:   couldn't deduce template parameter 'DSpecT'
+   28 |         TensorAccessor(interleaved_accessor_args, input_buffer_addr, input_data_tile_size_bytes);
+      |                                                                                                ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:70:5: note: candidate 2: 'template<class DSpecT, class DSpec_, typename std::enable_if<DSpec_::is_static, int>::type <anonymous> > TensorAccessor(size_t, uint32_t) -> TensorAccessor<DSpecT>'
+   70 |     TensorAccessor(const size_t bank_base_address_in = 0, uint32_t page_size_in = 0) :
+      |     ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:70:5: note: candidate expects 2 arguments, 3 provided
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:65:24: note: candidate 3: 'template<class DSpecT, class DSpec_, typename std::enable_if<is_same_v<typename std::decay<_Tp2>::type, DSpecT>, int>::type <anonymous> > TensorAccessor(DSpec_&&, size_t, uint32_t) -> TensorAccessor<DSpecT>'
+   65 |     constexpr explicit TensorAccessor(
+      |                        ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:65:24: note: template argument deduction/substitution failed:
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: note:   couldn't deduce template parameter 'DSpecT'
+   28 |         TensorAccessor(interleaved_accessor_args, input_buffer_addr, input_data_tile_size_bytes);
+      |                                                                                                ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:51:8: note: candidate 4: 'template<class DSpecT> TensorAccessor(TensorAccessor<DSpecT>) -> TensorAccessor<DSpecT>'
+   51 | struct TensorAccessor {
+      |        ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:51:8: note: candidate expects 1 argument, 3 provided
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:410:1: note: candidate 5: 'template<long unsigned int RankCT, long unsigned int NumBanksCT, class TensorShapeWrapper, class ShardShapeWrapper, class BankCoordsWrapper, bool IsInterleaved, bool IsDram> TensorAccessor(tensor_accessor::DistributionSpec<RankCT, NumBanksCT, TensorShapeWrapper, ShardShapeWrapper, BankCoordsWrapper, IsInterleaved, IsDram>, size_t, uint32_t) -> TensorAccessor<tensor_accessor::DistributionSpec<RankCT, NumBanksCT, TensorShapeWrapper, ShardShapeWrapper, BankCoordsWrapper, IsInterleaved, IsDram> >'
+  410 | TensorAccessor(
+      | ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:410:1: note: template argument deduction/substitution failed:
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: note:   'TensorAccessorArgs<2>' is not derived from 'tensor_accessor::DistributionSpec<RankCT, NumBanksCT, TensorShapeWrapper, ShardShapeWrapper, BankCoordsWrapper, IsInterleaved, IsDram>'
+   28 |         TensorAccessor(interleaved_accessor_args, input_buffer_addr, input_data_tile_size_bytes);
+      |                                                                                                ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:380:1: note: candidate 6: 'template<unsigned int CTA_OFFSET, unsigned int CRTA_OFFSET> TensorAccessor(const TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>&, size_t, uint32_t) -> TensorAccessor<tensor_accessor::DistributionSpec<TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::RankCT, TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::NumBanksCT, typename tensor_accessor::ArrayWrapperTypeSelectorU32<(! TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::tensor_shape_is_crta), TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::TensorShapeCTAOffset, TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::RankCT>::type, typename tensor_accessor::ArrayWrapperTypeSelectorU32<(! TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::shard_shape_is_crta), TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::ShardShapeCTAOffset, TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::RankCT>::type, typename tensor_accessor::ArrayWrapperTypeSelectorPackedU16<(! TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::bank_coords_is_crta), TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::BankCoordsCTAOffset, TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::NumBanksCT>::type, (! TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::is_sharded), TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::is_dram> >'
+  380 | TensorAccessor(const TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>& args, size_t, uint32_t)
+      | ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:380:1: note: template argument deduction/substitution failed:
+
+backtrace:
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x3a0409) [0x79a3549f3409]
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x54c45f) [0x79a354b9f45f]
+ --- tt::tt_metal::JitBuildState::compile_one(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, tt::tt_metal::JitBuildSettings const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) const
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x5526b4) [0x79a354ba56b4]
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x552642) [0x79a354ba5642]
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x319927) [0x79a35496c927]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x99ee8) [0x79a353c99ee8]
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x3198a2) [0x79a35496c8a2]
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x5523c1) [0x79a354ba53c1]
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x31d835) [0x79a354970835]
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x31c49e) [0x79a35496f49e]
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x31b8a8) [0x79a35496e8a8]
+ --- /lib/x86_64-linux-gnu/libstdc++.so.6(+0xdc253) [0x79a3540dc253]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x79a353c94ac3]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x1268c0) [0x79a353d268c0]
+ (assert.hpp:103)
+2025-11-24 11:27:05.020 | critical |          Always | TT_THROW: /home/m48chen/.cache/tt-metal-cache/5b7a87cca6/11358605694596585868/kernels/reader_binary_1_tile/6944381047652148987//ncrisc/ncrisc.elf: cannot map elf file into memory: No such file or directory (assert.hpp:103)
+2025-11-24 11:27:05.028 | critical |          Always | TT_FATAL: binary not found (assert.hpp:103)
+
+
+=== STDERR ===
+Read unexpected run_mailbox value: 0x40 (expected 0x80 or 0x0)
+Read unexpected run_mailbox value: 0x40 (expected 0x80 or 0x0)
+Read unexpected run_mailbox value: 0x40 (expected 0x80 or 0x0)
+Read unexpected run_mailbox value: 0x40 (expected 0x80 or 0x0)
+Read unexpected run_mailbox value: 0x40 (expected 0x80 or 0x0)
+Read unexpected run_mailbox value: 0x40 (expected 0x80 or 0x0)
+Read unexpected run_mailbox value: 0x40 (expected 0x80 or 0x0)
+Read unexpected run_mailbox value: 0x40 (expected 0x80 or 0x0)
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  TT_FATAL @ /home/m48chen/tt-metal/tt_metal/impl/kernels/kernel.cpp:292: iter != binaries_.end()
+info:
+binary not found
+backtrace:
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x2b61f8) [0x79a3549091f8]
+ --- tt::tt_metal::Kernel::binaries(unsigned long) const
+ --- tt::tt_metal::program_dispatch::finalize_kernel_bins(tt::tt_metal::IDevice*, unsigned int, std::unordered_map<unsigned int, std::shared_ptr<tt::tt_metal::Kernel>, std::hash<unsigned int>, std::equal_to<unsigned int>, std::allocator<std::pair<unsigned int const, std::shared_ptr<tt::tt_metal::Kernel> > > > const&, std::vector<std::shared_ptr<tt::tt_metal::KernelGroup>, std::allocator<std::shared_ptr<tt::tt_metal::KernelGroup> > >&, unsigned int, unsigned int&, unsigned int&)
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(_ZN2tt8tt_metal6detail11ProgramImpl24finalize_program_offsetsEPNS0_7IDeviceERKSt8functionIFRSt13unordered_mapIjSt10shared_ptrINS0_6KernelEESt4hashIjESt8equal_toIjESaISt4pairIKjS9_EEEjEERKS5_IFRSt6vectorIS7_INS0_11KernelGroupEESaISQ_EEjEERKS5_IFRKSO_INS0_9SemaphoreESaISY_EEvEESt4spanIPS2_Lm18446744073709551615EE+0x214) [0x79a354a2b7b4]
+ --- tt::tt_metal::distributed::MeshWorkloadImpl::finalize_offsets(tt::tt_metal::distributed::MeshDevice*)
+ --- tt::tt_metal::distributed::MeshWorkloadImpl::compile(tt::tt_metal::distributed::MeshDevice*)
+ --- tt::tt_metal::distributed::EnqueueMeshWorkload(tt::tt_metal::distributed::MeshCommandQueue&, tt::tt_metal::distributed::MeshWorkload&, bool)
+ --- /home/m48chen/tt-metal/build/programming_examples/diode_equation_single_v2(+0x17d2e) [0x5f9da323ad2e]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x79a353c29d90]
+ --- /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80) [0x79a353c29e40]
+ --- /home/m48chen/tt-metal/build/programming_examples/diode_equation_single_v2(+0x15cf5) [0x5f9da3238cf5]
+
+[tauceti:1276782] *** Process received signal ***
+[tauceti:1276782] Signal: Aborted (6)
+[tauceti:1276782] Signal code:  (-6)
+[tauceti:1276782] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x79a353c42520]
+[tauceti:1276782] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x79a353c969fc]
+[tauceti:1276782] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x79a353c42476]
+[tauceti:1276782] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x79a353c287f3]
+[tauceti:1276782] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x79a3540a2b9e]
+[tauceti:1276782] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x79a3540ae20c]
+[tauceti:1276782] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x79a3540ae277]
+[tauceti:1276782] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x79a3540ae4d8]
+[tauceti:1276782] [ 8] /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(_ZN2tt6assert6detail13tt_throw_implIJN3fmt3v117fstringIJEEEEEEvPKciS8_S8_DpRKT_+0x40c)[0x79a3549300fc]
+[tauceti:1276782] [ 9] /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x2b61f8)[0x79a3549091f8]
+[tauceti:1276782] [10] /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(_ZNK2tt8tt_metal6Kernel8binariesEm+0x12b)[0x79a3549f053b]
+[tauceti:1276782] [11] /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(_ZN2tt8tt_metal16program_dispatch20finalize_kernel_binsEPNS0_7IDeviceEjRKSt13unordered_mapIjSt10shared_ptrINS0_6KernelEESt4hashIjESt8equal_toIjESaISt4pairIKjS7_EEERSt6vectorIS5_INS0_11KernelGroupEESaISL_EEjRjSP_+0x508)[0x79a354a3c708]
+[tauceti:1276782] [12] /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(_ZN2tt8tt_metal6detail11ProgramImpl24finalize_program_offsetsEPNS0_7IDeviceERKSt8functionIFRSt13unordered_mapIjSt10shared_ptrINS0_6KernelEESt4hashIjESt8equal_toIjESaISt4pairIKjS9_EEEjEERKS5_IFRSt6vectorIS7_INS0_11KernelGroupEESaISQ_EEjEERKS5_IFRKSO_INS0_9SemaphoreESaISY_EEvEESt4spanIPS2_Lm18446744073709551615EE+0x214)[0x79a354a2b7b4]
+[tauceti:1276782] [13] /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(_ZN2tt8tt_metal11distributed16MeshWorkloadImpl16finalize_offsetsEPNS1_10MeshDeviceE+0x10d)[0x79a354c4ff3d]
+[tauceti:1276782] [14] /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(_ZN2tt8tt_metal11distributed16MeshWorkloadImpl7compileEPNS1_10MeshDeviceE+0x281)[0x79a354c4fcc1]
+[tauceti:1276782] [15] /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(_ZN2tt8tt_metal11distributed19EnqueueMeshWorkloadERNS1_16MeshCommandQueueERNS1_12MeshWorkloadEb+0x2e)[0x79a354c0858e]
+[tauceti:1276782] [16] /home/m48chen/tt-metal/build/programming_examples/diode_equation_single_v2(+0x17d2e)[0x5f9da323ad2e]
+[tauceti:1276782] [17] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x79a353c29d90]
+[tauceti:1276782] [18] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x79a353c29e40]
+[tauceti:1276782] [19] /home/m48chen/tt-metal/build/programming_examples/diode_equation_single_v2(+0x15cf5)[0x5f9da3238cf5]
+[tauceti:1276782] *** End of error message ***
+
+
+=== COMBINED ===
+2025-11-24 11:27:02.854 | info     |             UMD | Starting topology discovery. (topology_discovery.cpp:69)
+2025-11-24 11:27:02.887 | info     |             UMD | Established firmware bundle version: 18.12.0 (topology_discovery.cpp:369)
+2025-11-24 11:27:02.887 | info     |             UMD | Established ETH FW version: 7.1.0 (topology_discovery_wormhole.cpp:324)
+2025-11-24 11:27:02.909 | info     |             UMD | Completed topology discovery. (topology_discovery.cpp:73)
+2025-11-24 11:27:02.921 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:209)
+2025-11-24 11:27:02.921 | info     |             UMD | Starting topology discovery. (topology_discovery.cpp:69)
+2025-11-24 11:27:02.948 | info     |             UMD | Established firmware bundle version: 18.12.0 (topology_discovery.cpp:369)
+2025-11-24 11:27:02.948 | info     |             UMD | Established ETH FW version: 7.1.0 (topology_discovery_wormhole.cpp:324)
+2025-11-24 11:27:02.969 | info     |             UMD | Completed topology discovery. (topology_discovery.cpp:73)
+2025-11-24 11:27:02.980 | info     |             UMD | Starting topology discovery. (topology_discovery.cpp:69)
+2025-11-24 11:27:03.043 | info     |             UMD | Established firmware bundle version: 18.12.0 (topology_discovery.cpp:369)
+2025-11-24 11:27:03.044 | info     |             UMD | Established ETH FW version: 7.1.0 (topology_discovery_wormhole.cpp:324)
+2025-11-24 11:27:03.100 | info     |             UMD | Completed topology discovery. (topology_discovery.cpp:73)
+2025-11-24 11:27:03.111 | info     |             UMD | Harvesting mask for chip 3 is 0x240 (NOC0: 0x240, simulated harvesting mask: 0x0). (cluster.cpp:357)
+2025-11-24 11:27:03.183 | info     |             UMD | Harvesting mask for chip 2 is 0x240 (NOC0: 0x240, simulated harvesting mask: 0x0). (cluster.cpp:357)
+2025-11-24 11:27:03.196 | info     |             UMD | Harvesting mask for chip 1 is 0x208 (NOC0: 0x208, simulated harvesting mask: 0x0). (cluster.cpp:357)
+2025-11-24 11:27:03.207 | info     |             UMD | Harvesting mask for chip 0 is 0x202 (NOC0: 0x202, simulated harvesting mask: 0x0). (cluster.cpp:357)
+2025-11-24 11:27:03.219 | info     |             UMD | Harvesting mask for chip 7 is 0x201 (NOC0: 0x201, simulated harvesting mask: 0x0). (cluster.cpp:357)
+2025-11-24 11:27:03.232 | info     |             UMD | Harvesting mask for chip 6 is 0x201 (NOC0: 0x201, simulated harvesting mask: 0x0). (cluster.cpp:357)
+2025-11-24 11:27:03.245 | info     |             UMD | Harvesting mask for chip 5 is 0x220 (NOC0: 0x220, simulated harvesting mask: 0x0). (cluster.cpp:357)
+2025-11-24 11:27:03.258 | info     |             UMD | Harvesting mask for chip 4 is 0x240 (NOC0: 0x240, simulated harvesting mask: 0x0). (cluster.cpp:357)
+2025-11-24 11:27:03.271 | info     |             UMD | Opening local chip ids/PCIe ids: {0, 1, 2, 3}/[2, 0, 1, 3] and remote chip ids {4, 5, 6, 7} (cluster.cpp:202)
+2025-11-24 11:27:03.271 | info     |             UMD | IOMMU: disabled (cluster.cpp:178)
+2025-11-24 11:27:03.271 | info     |             UMD | KMD version: 2.4.1 (cluster.cpp:181)
+2025-11-24 11:27:03.279 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x799f80000000 and size 0x40000000 pinned to physical address 0x41c0000000 and mapped to noc address 0x800000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.279 | info     |             UMD | Mapped hugepage 0x41c0000000 to NOC address 0x800000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.280 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x799f40000000 and size 0x40000000 pinned to physical address 0x4200000000 and mapped to noc address 0x840000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.280 | info     |             UMD | Mapped hugepage 0x4200000000 to NOC address 0x840000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.281 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x799f00000000 and size 0x40000000 pinned to physical address 0x4240000000 and mapped to noc address 0x880000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.281 | info     |             UMD | Mapped hugepage 0x4240000000 to NOC address 0x880000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.281 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x799ec0000000 and size 0x30000000 pinned to physical address 0x4280000000 and mapped to noc address 0x8c0000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.281 | info     |             UMD | Mapped hugepage 0x4280000000 to NOC address 0x8c0000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.282 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a080000000 and size 0x40000000 pinned to physical address 0x280000000 and mapped to noc address 0x800000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.282 | info     |             UMD | Mapped hugepage 0x280000000 to NOC address 0x800000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.283 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a040000000 and size 0x40000000 pinned to physical address 0x2c0000000 and mapped to noc address 0x840000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.283 | info     |             UMD | Mapped hugepage 0x2c0000000 to NOC address 0x840000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.284 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a000000000 and size 0x40000000 pinned to physical address 0x300000000 and mapped to noc address 0x880000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.284 | info     |             UMD | Mapped hugepage 0x300000000 to NOC address 0x880000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.284 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x799fc0000000 and size 0x30000000 pinned to physical address 0x340000000 and mapped to noc address 0x8c0000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.284 | info     |             UMD | Mapped hugepage 0x340000000 to NOC address 0x8c0000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.285 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a1c0000000 and size 0x40000000 pinned to physical address 0x180000000 and mapped to noc address 0x800000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.285 | info     |             UMD | Mapped hugepage 0x180000000 to NOC address 0x800000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.286 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a180000000 and size 0x40000000 pinned to physical address 0x1c0000000 and mapped to noc address 0x840000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.286 | info     |             UMD | Mapped hugepage 0x1c0000000 to NOC address 0x840000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.287 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a140000000 and size 0x40000000 pinned to physical address 0x200000000 and mapped to noc address 0x880000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.287 | info     |             UMD | Mapped hugepage 0x200000000 to NOC address 0x880000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.288 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a100000000 and size 0x30000000 pinned to physical address 0x240000000 and mapped to noc address 0x8c0000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.288 | info     |             UMD | Mapped hugepage 0x240000000 to NOC address 0x8c0000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.289 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a2c0000000 and size 0x40000000 pinned to physical address 0x40c0000000 and mapped to noc address 0x800000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.289 | info     |             UMD | Mapped hugepage 0x40c0000000 to NOC address 0x800000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.289 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a280000000 and size 0x40000000 pinned to physical address 0x4100000000 and mapped to noc address 0x840000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.289 | info     |             UMD | Mapped hugepage 0x4100000000 to NOC address 0x840000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.290 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a240000000 and size 0x40000000 pinned to physical address 0x4140000000 and mapped to noc address 0x880000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.290 | info     |             UMD | Mapped hugepage 0x4140000000 to NOC address 0x880000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.291 | info     |             UMD | Pinning pages for Hugepage: virtual address 0x79a200000000 and size 0x30000000 pinned to physical address 0x4180000000 and mapped to noc address 0x8c0000000 (pci_device.cpp:642)
+2025-11-24 11:27:03.291 | info     |             UMD | Mapped hugepage 0x4180000000 to NOC address 0x8c0000000 (sysmem_manager.cpp:247)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper mapping start (mesh=0): n_log=8, n_phys=8, log_deg_hist={2:4, 3:4}, phys_deg_hist={2:4, 3:4} (topology_mapper.cpp:728)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: First logical node li=0 (fabric_node=(M0, D0)) has mesh rank 0 (topology_mapper.cpp:1400)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: Found 8 physical ASIC candidates for first logical node li=0 (fabric_node=(M0, D0)) with matching mesh rank 0, will try each as first pinning (topology_mapper.cpp:1433)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: Trying first pinning 1/8: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=0 (asic_id=10226851854) (hostname=tauceti) (topology_mapper.cpp:1489)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: First pinning 1/8 failed: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=0 (asic_id=10226851854) (topology_mapper.cpp:1522)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: Trying first pinning 2/8: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=1 (asic_id=10226851885) (hostname=tauceti) (topology_mapper.cpp:1489)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: First pinning 2/8 failed: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=1 (asic_id=10226851885) (topology_mapper.cpp:1522)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: Trying first pinning 3/8: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=2 (asic_id=10226851927) (hostname=tauceti) (topology_mapper.cpp:1489)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: First pinning 3/8 failed: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=2 (asic_id=10226851927) (topology_mapper.cpp:1522)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: Trying first pinning 4/8: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=3 (asic_id=10226852052) (hostname=tauceti) (topology_mapper.cpp:1489)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: First pinning 4/8 failed: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=3 (asic_id=10226852052) (topology_mapper.cpp:1522)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: Trying first pinning 5/8: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=4 (asic_id=14521819150) (hostname=tauceti) (topology_mapper.cpp:1489)
+2025-11-24 11:27:03.350 | info     |          Fabric | TopologyMapper: Successfully found mapping with first pinning 5/8: logical node li=0 (fabric_node=(M0, D0)) -> physical ASIC j=4 (asic_id=14521819150) (topology_mapper.cpp:1510)
+2025-11-24 11:27:03.410 | info     |           Metal | While initializing device 0, active ethernet dispatch core (x=21,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.410 | info     |           Metal | While initializing device 0, active ethernet dispatch core (x=18,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.410 | info     |           Metal | While initializing device 0, active ethernet dispatch core (x=25,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.410 | info     |           Metal | While initializing device 0, active ethernet dispatch core (x=22,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.410 | info     |           Metal | While initializing device 0, active ethernet dispatch core (x=18,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.410 | info     |           Metal | While initializing device 0, active ethernet dispatch core (x=25,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.410 | critical |          Always | TT_FATAL: Read unexpected run_mailbox value from core (x=25,y=16) (assert.hpp:103)
+2025-11-24 11:27:03.412 | warning  |          Always | Detected dispatch kernels still running but failed to complete an early exit. This may happen from time to time following a reset, continuing to FW initialization... (metal_context.cpp:703)
+2025-11-24 11:27:03.418 | info     |           Metal | While initializing device 1, active ethernet dispatch core (x=21,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.418 | info     |           Metal | While initializing device 1, active ethernet dispatch core (x=22,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.418 | info     |           Metal | While initializing device 1, active ethernet dispatch core (x=18,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.418 | info     |           Metal | While initializing device 1, active ethernet dispatch core (x=25,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.418 | info     |           Metal | While initializing device 1, active ethernet dispatch core (x=21,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.418 | info     |           Metal | While initializing device 1, active ethernet dispatch core (x=22,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.418 | critical |          Always | TT_FATAL: Read unexpected run_mailbox value from core (x=22,y=16) (assert.hpp:103)
+2025-11-24 11:27:03.419 | warning  |          Always | Detected dispatch kernels still running but failed to complete an early exit. This may happen from time to time following a reset, continuing to FW initialization... (metal_context.cpp:703)
+2025-11-24 11:27:03.426 | info     |           Metal | While initializing device 2, active ethernet dispatch core (x=21,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.426 | info     |           Metal | While initializing device 2, active ethernet dispatch core (x=18,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.426 | info     |           Metal | While initializing device 2, active ethernet dispatch core (x=25,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.426 | info     |           Metal | While initializing device 2, active ethernet dispatch core (x=22,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.426 | info     |           Metal | While initializing device 2, active ethernet dispatch core (x=18,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.426 | info     |           Metal | While initializing device 2, active ethernet dispatch core (x=25,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.426 | critical |          Always | TT_FATAL: Read unexpected run_mailbox value from core (x=25,y=16) (assert.hpp:103)
+2025-11-24 11:27:03.427 | warning  |          Always | Detected dispatch kernels still running but failed to complete an early exit. This may happen from time to time following a reset, continuing to FW initialization... (metal_context.cpp:703)
+2025-11-24 11:27:03.434 | info     |           Metal | While initializing device 3, active ethernet dispatch core (x=21,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.434 | info     |           Metal | While initializing device 3, active ethernet dispatch core (x=22,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.434 | info     |           Metal | While initializing device 3, active ethernet dispatch core (x=18,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.434 | info     |           Metal | While initializing device 3, active ethernet dispatch core (x=25,y=17) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.434 | info     |           Metal | While initializing device 3, active ethernet dispatch core (x=21,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.434 | info     |           Metal | While initializing device 3, active ethernet dispatch core (x=22,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.434 | critical |          Always | TT_FATAL: Read unexpected run_mailbox value from core (x=22,y=16) (assert.hpp:103)
+2025-11-24 11:27:03.435 | warning  |          Always | Detected dispatch kernels still running but failed to complete an early exit. This may happen from time to time following a reset, continuing to FW initialization... (metal_context.cpp:703)
+2025-11-24 11:27:03.441 | info     |           Metal | While initializing device 4, active ethernet dispatch core (x=21,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.441 | info     |           Metal | While initializing device 4, active ethernet dispatch core (x=22,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.441 | info     |           Metal | While initializing device 4, active ethernet dispatch core (x=18,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.442 | info     |           Metal | While initializing device 4, active ethernet dispatch core (x=25,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.442 | critical |          Always | TT_FATAL: Read unexpected run_mailbox value from core (x=25,y=16) (assert.hpp:103)
+2025-11-24 11:27:03.443 | warning  |          Always | Detected dispatch kernels still running but failed to complete an early exit. This may happen from time to time following a reset, continuing to FW initialization... (metal_context.cpp:703)
+2025-11-24 11:27:03.556 | info     |           Metal | While initializing device 5, active ethernet dispatch core (x=21,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.556 | info     |           Metal | While initializing device 5, active ethernet dispatch core (x=22,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.556 | info     |           Metal | While initializing device 5, active ethernet dispatch core (x=18,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.556 | info     |           Metal | While initializing device 5, active ethernet dispatch core (x=25,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.557 | critical |          Always | TT_FATAL: Read unexpected run_mailbox value from core (x=25,y=16) (assert.hpp:103)
+2025-11-24 11:27:03.558 | warning  |          Always | Detected dispatch kernels still running but failed to complete an early exit. This may happen from time to time following a reset, continuing to FW initialization... (metal_context.cpp:703)
+2025-11-24 11:27:03.680 | info     |           Metal | While initializing device 6, active ethernet dispatch core (x=21,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.680 | info     |           Metal | While initializing device 6, active ethernet dispatch core (x=22,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.680 | info     |           Metal | While initializing device 6, active ethernet dispatch core (x=18,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.681 | info     |           Metal | While initializing device 6, active ethernet dispatch core (x=25,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.681 | critical |          Always | TT_FATAL: Read unexpected run_mailbox value from core (x=25,y=16) (assert.hpp:103)
+2025-11-24 11:27:03.683 | warning  |          Always | Detected dispatch kernels still running but failed to complete an early exit. This may happen from time to time following a reset, continuing to FW initialization... (metal_context.cpp:703)
+2025-11-24 11:27:03.805 | info     |           Metal | While initializing device 7, active ethernet dispatch core (x=21,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.806 | info     |           Metal | While initializing device 7, active ethernet dispatch core (x=22,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.806 | info     |           Metal | While initializing device 7, active ethernet dispatch core (x=18,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.806 | info     |           Metal | While initializing device 7, active ethernet dispatch core (x=25,y=16) detected as still running, issuing exit signal. (metal_context.cpp:668)
+2025-11-24 11:27:03.806 | critical |          Always | TT_FATAL: Read unexpected run_mailbox value from core (x=25,y=16) (assert.hpp:103)
+2025-11-24 11:27:03.808 | warning  |          Always | Detected dispatch kernels still running but failed to complete an early exit. This may happen from time to time following a reset, continuing to FW initialization... (metal_context.cpp:703)
+2025-11-24 11:27:03.920 | warning  |           Metal | Opening subset of mmio devices slows down UMD read/write to remote chips. If opening more devices, consider using CreateDevices API. (device_pool.cpp:316)
+2025-11-24 11:27:04.435 | error    |    BuildKernels | ncrisc compile failure -- cmd: cd /home/m48chen/.cache/tt-metal-cache/5b7a87cca6/11358605694596585868/kernels/reader_binary_1_tile/6944381047652148987/ncrisc/ && /home/m48chen/tt-metal/runtime/sfpi/compiler/bin/riscv-tt-elf-g++ -O2 -std=c++17 -flto=auto -ffast-math -fno-exceptions -g -MMD -fno-use-cxa-atexit -Wall -Werror -Wno-unknown-pragmas -Wno-deprecated-declarations -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable -Wno-unused-function -mcpu=tt-wh -fno-tree-loop-distribute-patterns -I. -I.. -I/home/m48chen/tt-metal/ -I/home/m48chen/tt-metal/ttnn -I/home/m48chen/tt-metal/ttnn/cpp -I/home/m48chen/tt-metal/tt_metal -I/home/m48chen/tt-metal/tt_metal/include -I/home/m48chen/tt-metal/tt_metal/hw/inc -I/home/m48chen/tt-metal/tt_metal/hostdevcommon/api -I/home/m48chen/tt-metal/tt_metal/hw/inc/debug -I/home/m48chen/tt-metal/tt_metal/api/ -I/home/m48chen/tt-metal/tt_metal/api/tt-metalium/ -I/home/m48chen/tt-metal/tt_metal/hw/ckernels/wormhole_b0/metal/common -I/home/m48chen/tt-metal/tt_metal/hw/ckernels/wormhole_b0/metal/llk_io -I/home/m48chen/tt-metal/tt_metal/hw/inc/tt-1xx -I/home/m48chen/tt-metal/tt_metal/hw/inc/tt-1xx/wormhole -I/home/m48chen/tt-metal/tt_metal/hw/inc/tt-1xx/wormhole/wormhole_b0_defines -I/home/m48chen/tt-metal/tt_metal/hw/inc/tt-1xx/wormhole/noc -I/home/m48chen/tt-metal/tt_metal/lite_fabric/hw/inc/wormhole -I/home/m48chen/tt-metal/tt_metal/third_party/tt_llk/tt_llk_wormhole_b0/common/inc -I/home/m48chen/tt-metal/tt_metal/third_party/tt_llk/tt_llk_wormhole_b0/llk_lib -I/home/m48chen/tt-metal/tt_metal/hw/firmware/src/tt-1xx -c -o ncrisck.o /home/m48chen/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc -DIS_NOT_POW2_NUM_DRAM_BANKS=1 -DIS_NOT_POW2_NUM_L1_BANKS=1 -DNUM_DRAM_BANKS=12 -DNUM_L1_BANKS=56 -DPCIE_NOC_X=0 -DPCIE_NOC_Y=3 -DTENSIX_FIRMWARE -DLOCAL_MEM_EN=0 -DROUTING_FW_ENABLED -DPROCESSOR_INDEX=1 -DCOMPILE_FOR_NCRISC -DARCH_WORMHOLE -DDISPATCH_MESSAGE_ADDR=4290183304 -DKERNEL_BUILD -DNOC_INDEX='0' -DNOC_MODE='0' -DKERNEL_COMPILE_TIME_ARGS=0,2  (build.cpp:60)
+2025-11-24 11:27:04.435 | critical |          Always | TT_THROW: ncrisc build failed. Log: In file included from /home/m48chen/tt-metal/tt_metal/hw/inc/firmware_common.h:12,
+                 from /home/m48chen/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc:17:
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h: In instantiation of 'constexpr uint32_t get_ct_arg() [with long unsigned int Idx = 2; uint32_t = long unsigned int]':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:23:62:   required from 'constexpr const Flags<tensor_accessor::ArgConfig> TensorAccessorArgs<2>::args_config'
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:25:40:   required from 'constexpr const bool TensorAccessorArgs<2>::is_sharded'
+   25 |     static constexpr bool is_sharded = args_config.test(tensor_accessor::ArgConfig::Sharded);
+      |                                        ^~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:36:10:   required from 'struct TensorAccessorArgs<2>'
+   36 |         !is_sharded || !rank_is_crta || (rank_is_crta && tensor_shape_is_crta && shard_shape_is_crta),
+      |          ^~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:25:23: error: static assertion failed: Index out of range
+   25 |     static_assert(Idx < kernel_compile_time_args.size(), "Index out of range");
+      |                   ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:25:23: note: the comparison reduces to '(2 < 2)'
+In file included from /home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:8,
+                 from /home/m48chen/tt-metal/tt_metal/hw/inc/dataflow_api.h:28,
+                 from /home/m48chen/tt-metal/tt_metal/hw/inc/firmware_common.h:20:
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'struct TensorAccessorArgs<2>':
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:36:38: error: non-constant condition for static assertion
+   36 |         !is_sharded || !rank_is_crta || (rank_is_crta && tensor_shape_is_crta && shard_shape_is_crta),
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:39:43: error: non-constant condition for static assertion
+   39 |         !is_sharded || !num_banks_is_crta || (num_banks_is_crta && bank_coords_is_crta),
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'constexpr const uint32_t TensorAccessorArgs<2>::RankCT':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:64:50:   required from 'struct TensorAccessorArgs<2>'
+   64 |     static_assert(!is_sharded || rank_is_crta || RankCT > 0, "Rank must be greater than 0!");
+      |                                                  ^~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:62:62: error: inconsistent types 'int' and 'long unsigned int' deduced for lambda return type
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:50:20: note: in expansion of macro 'get_compile_time_arg_val'
+   50 |             return get_compile_time_arg_val(RankCTAOffset);
+      |                    ^~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h: In instantiation of 'constexpr uint32_t get_ct_arg() [with long unsigned int Idx = 3; uint32_t = long unsigned int]':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:50:20:   required from 'constexpr const uint32_t TensorAccessorArgs<2>::RankCT'
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:64:50:   required from 'struct TensorAccessorArgs<2>'
+   64 |     static_assert(!is_sharded || rank_is_crta || RankCT > 0, "Rank must be greater than 0!");
+      |                                                  ^~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:25:23: error: static assertion failed: Index out of range
+   25 |     static_assert(Idx < kernel_compile_time_args.size(), "Index out of range");
+      |                   ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:25:23: note: the comparison reduces to '(3 < 2)'
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'constexpr const uint32_t TensorAccessorArgs<2>::RankCT':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:64:50:   required from 'struct TensorAccessorArgs<2>'
+   64 |     static_assert(!is_sharded || rank_is_crta || RankCT > 0, "Rank must be greater than 0!");
+      |                                                  ^~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:52:6: error: 'TensorAccessorArgs<2>::<lambda()>' called in a constant expression
+   46 |     static constexpr uint32_t RankCT = [] {
+      |                                        ~~~~
+   47 |         if constexpr (!is_sharded || rank_is_crta) {
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   48 |             return 0;
+      |             ~~~~~~~~~
+   49 |         } else {
+      |         ~~~~~~~~
+   50 |             return get_compile_time_arg_val(RankCTAOffset);
+      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   51 |         }
+      |         ~
+   52 |     }();
+      |     ~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:46:40: note: 'TensorAccessorArgs<2>::<lambda()>' is not usable as a 'constexpr' function because:
+   46 |     static constexpr uint32_t RankCT = [] {
+      |                                        ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'struct TensorAccessorArgs<2>':
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:64:47: error: non-constant condition for static assertion
+   64 |     static_assert(!is_sharded || rank_is_crta || RankCT > 0, "Rank must be greater than 0!");
+      |                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'constexpr const uint32_t TensorAccessorArgs<2>::NumBanksCT':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:65:55:   required from 'struct TensorAccessorArgs<2>'
+   65 |     static_assert(!is_sharded || num_banks_is_crta || NumBanksCT > 0, "Number of banks must be greater than 0!");
+      |                                                       ^~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:62:62: error: no matching function for call to 'get_ct_arg<TensorAccessorArgs<2>::NumBanksCTAOffset>()'
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:58:20: note: in expansion of macro 'get_compile_time_arg_val'
+   58 |             return get_compile_time_arg_val(NumBanksCTAOffset);
+      |                    ^~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:62:62: note: there is 1 candidate
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:58:20: note: in expansion of macro 'get_compile_time_arg_val'
+   58 |             return get_compile_time_arg_val(NumBanksCTAOffset);
+      |                    ^~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:24:20: note: candidate 1: 'template<long unsigned int Idx> constexpr uint32_t get_ct_arg()'
+   24 | constexpr uint32_t get_ct_arg() {
+      |                    ^~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:24:20: note: template argument deduction/substitution failed:
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:60:6: error: 'TensorAccessorArgs<2>::<lambda()>' called in a constant expression
+   54 |     static constexpr uint32_t NumBanksCT = [] {
+      |                                            ~~~~
+   55 |         if constexpr (!is_sharded || num_banks_is_crta) {
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   56 |             return 0;
+      |             ~~~~~~~~~
+   57 |         } else {
+      |         ~~~~~~~~
+   58 |             return get_compile_time_arg_val(NumBanksCTAOffset);
+      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   59 |         }
+      |         ~
+   60 |     }();
+      |     ~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:54:44: note: 'TensorAccessorArgs<2>::<lambda()>' is not usable as a 'constexpr' function because:
+   54 |     static constexpr uint32_t NumBanksCT = [] {
+      |                                            ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'struct TensorAccessorArgs<2>':
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:65:52: error: non-constant condition for static assertion
+   65 |     static_assert(!is_sharded || num_banks_is_crta || NumBanksCT > 0, "Number of banks must be greater than 0!");
+      |                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~
+In file included from ../kernel_includes.hpp:1,
+                 from /home/m48chen/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc:22:
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp: In function 'void kernel_main()':
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: error: class template argument deduction failed:
+   28 |         TensorAccessor(interleaved_accessor_args, input_buffer_addr, input_data_tile_size_bytes);
+      |                                                                                                ^
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: error: no matching function for call to 'TensorAccessor(const TensorAccessorArgs<2>&, const uint32_t&, const uint32_t&)'
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: note: there are 6 candidates
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:74:5: note: candidate 1: 'template<class DSpecT, unsigned int CTA_OFFSET, unsigned int CRTA_OFFSET> TensorAccessor(const TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>&, size_t, uint32_t) -> TensorAccessor<DSpecT>'
+   74 |     TensorAccessor(
+      |     ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:74:5: note: template argument deduction/substitution failed:
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: note:   couldn't deduce template parameter 'DSpecT'
+   28 |         TensorAccessor(interleaved_accessor_args, input_buffer_addr, input_data_tile_size_bytes);
+      |                                                                                                ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:70:5: note: candidate 2: 'template<class DSpecT, class DSpec_, typename std::enable_if<DSpec_::is_static, int>::type <anonymous> > TensorAccessor(size_t, uint32_t) -> TensorAccessor<DSpecT>'
+   70 |     TensorAccessor(const size_t bank_base_address_in = 0, uint32_t page_size_in = 0) :
+      |     ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:70:5: note: candidate expects 2 arguments, 3 provided
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:65:24: note: candidate 3: 'template<class DSpecT, class DSpec_, typename std::enable_if<is_same_v<typename std::decay<_Tp2>::type, DSpecT>, int>::type <anonymous> > TensorAccessor(DSpec_&&, size_t, uint32_t) -> TensorAccessor<DSpecT>'
+   65 |     constexpr explicit TensorAccessor(
+      |                        ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:65:24: note: template argument deduction/substitution failed:
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: note:   couldn't deduce template parameter 'DSpecT'
+   28 |         TensorAccessor(interleaved_accessor_args, input_buffer_addr, input_data_tile_size_bytes);
+      |                                                                                                ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:51:8: note: candidate 4: 'template<class DSpecT> TensorAccessor(TensorAccessor<DSpecT>) -> TensorAccessor<DSpecT>'
+   51 | struct TensorAccessor {
+      |        ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:51:8: note: candidate expects 1 argument, 3 provided
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:410:1: note: candidate 5: 'template<long unsigned int RankCT, long unsigned int NumBanksCT, class TensorShapeWrapper, class ShardShapeWrapper, class BankCoordsWrapper, bool IsInterleaved, bool IsDram> TensorAccessor(tensor_accessor::DistributionSpec<RankCT, NumBanksCT, TensorShapeWrapper, ShardShapeWrapper, BankCoordsWrapper, IsInterleaved, IsDram>, size_t, uint32_t) -> TensorAccessor<tensor_accessor::DistributionSpec<RankCT, NumBanksCT, TensorShapeWrapper, ShardShapeWrapper, BankCoordsWrapper, IsInterleaved, IsDram> >'
+  410 | TensorAccessor(
+      | ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:410:1: note: template argument deduction/substitution failed:
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: note:   'TensorAccessorArgs<2>' is not derived from 'tensor_accessor::DistributionSpec<RankCT, NumBanksCT, TensorShapeWrapper, ShardShapeWrapper, BankCoordsWrapper, IsInterleaved, IsDram>'
+   28 |         TensorAccessor(interleaved_accessor_args, input_buffer_addr, input_data_tile_size_bytes);
+      |                                                                                                ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:380:1: note: candidate 6: 'template<unsigned int CTA_OFFSET, unsigned int CRTA_OFFSET> TensorAccessor(const TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>&, size_t, uint32_t) -> TensorAccessor<tensor_accessor::DistributionSpec<TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::RankCT, TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::NumBanksCT, typename tensor_accessor::ArrayWrapperTypeSelectorU32<(! TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::tensor_shape_is_crta), TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::TensorShapeCTAOffset, TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::RankCT>::type, typename tensor_accessor::ArrayWrapperTypeSelectorU32<(! TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::shard_shape_is_crta), TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::ShardShapeCTAOffset, TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::RankCT>::type, typename tensor_accessor::ArrayWrapperTypeSelectorPackedU16<(! TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::bank_coords_is_crta), TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::BankCoordsCTAOffset, TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::NumBanksCT>::type, (! TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::is_sharded), TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::is_dram> >'
+  380 | TensorAccessor(const TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>& args, size_t, uint32_t)
+      | ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:380:1: note: template argument deduction/substitution failed:
+ (assert.hpp:103)
+2025-11-24 11:27:04.439 | critical |          Always | TT_THROW: Failed to generate binaries for reader_binary_1_tile TT_THROW @ /home/m48chen/tt-metal/tt_metal/jit_build/build.cpp:64: tt::exception
+info:
+ncrisc build failed. Log: In file included from /home/m48chen/tt-metal/tt_metal/hw/inc/firmware_common.h:12,
+                 from /home/m48chen/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc:17:
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h: In instantiation of 'constexpr uint32_t get_ct_arg() [with long unsigned int Idx = 2; uint32_t = long unsigned int]':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:23:62:   required from 'constexpr const Flags<tensor_accessor::ArgConfig> TensorAccessorArgs<2>::args_config'
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:25:40:   required from 'constexpr const bool TensorAccessorArgs<2>::is_sharded'
+   25 |     static constexpr bool is_sharded = args_config.test(tensor_accessor::ArgConfig::Sharded);
+      |                                        ^~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:36:10:   required from 'struct TensorAccessorArgs<2>'
+   36 |         !is_sharded || !rank_is_crta || (rank_is_crta && tensor_shape_is_crta && shard_shape_is_crta),
+      |          ^~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:25:23: error: static assertion failed: Index out of range
+   25 |     static_assert(Idx < kernel_compile_time_args.size(), "Index out of range");
+      |                   ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:25:23: note: the comparison reduces to '(2 < 2)'
+In file included from /home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:8,
+                 from /home/m48chen/tt-metal/tt_metal/hw/inc/dataflow_api.h:28,
+                 from /home/m48chen/tt-metal/tt_metal/hw/inc/firmware_common.h:20:
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'struct TensorAccessorArgs<2>':
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:36:38: error: non-constant condition for static assertion
+   36 |         !is_sharded || !rank_is_crta || (rank_is_crta && tensor_shape_is_crta && shard_shape_is_crta),
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:39:43: error: non-constant condition for static assertion
+   39 |         !is_sharded || !num_banks_is_crta || (num_banks_is_crta && bank_coords_is_crta),
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'constexpr const uint32_t TensorAccessorArgs<2>::RankCT':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:64:50:   required from 'struct TensorAccessorArgs<2>'
+   64 |     static_assert(!is_sharded || rank_is_crta || RankCT > 0, "Rank must be greater than 0!");
+      |                                                  ^~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:62:62: error: inconsistent types 'int' and 'long unsigned int' deduced for lambda return type
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:50:20: note: in expansion of macro 'get_compile_time_arg_val'
+   50 |             return get_compile_time_arg_val(RankCTAOffset);
+      |                    ^~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h: In instantiation of 'constexpr uint32_t get_ct_arg() [with long unsigned int Idx = 3; uint32_t = long unsigned int]':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:50:20:   required from 'constexpr const uint32_t TensorAccessorArgs<2>::RankCT'
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:64:50:   required from 'struct TensorAccessorArgs<2>'
+   64 |     static_assert(!is_sharded || rank_is_crta || RankCT > 0, "Rank must be greater than 0!");
+      |                                                  ^~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:25:23: error: static assertion failed: Index out of range
+   25 |     static_assert(Idx < kernel_compile_time_args.size(), "Index out of range");
+      |                   ~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:25:23: note: the comparison reduces to '(3 < 2)'
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'constexpr const uint32_t TensorAccessorArgs<2>::RankCT':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:64:50:   required from 'struct TensorAccessorArgs<2>'
+   64 |     static_assert(!is_sharded || rank_is_crta || RankCT > 0, "Rank must be greater than 0!");
+      |                                                  ^~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:52:6: error: 'TensorAccessorArgs<2>::<lambda()>' called in a constant expression
+   46 |     static constexpr uint32_t RankCT = [] {
+      |                                        ~~~~
+   47 |         if constexpr (!is_sharded || rank_is_crta) {
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   48 |             return 0;
+      |             ~~~~~~~~~
+   49 |         } else {
+      |         ~~~~~~~~
+   50 |             return get_compile_time_arg_val(RankCTAOffset);
+      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   51 |         }
+      |         ~
+   52 |     }();
+      |     ~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:46:40: note: 'TensorAccessorArgs<2>::<lambda()>' is not usable as a 'constexpr' function because:
+   46 |     static constexpr uint32_t RankCT = [] {
+      |                                        ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'struct TensorAccessorArgs<2>':
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:64:47: error: non-constant condition for static assertion
+   64 |     static_assert(!is_sharded || rank_is_crta || RankCT > 0, "Rank must be greater than 0!");
+      |                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'constexpr const uint32_t TensorAccessorArgs<2>::NumBanksCT':
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:65:55:   required from 'struct TensorAccessorArgs<2>'
+   65 |     static_assert(!is_sharded || num_banks_is_crta || NumBanksCT > 0, "Number of banks must be greater than 0!");
+      |                                                       ^~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:62:62: error: no matching function for call to 'get_ct_arg<TensorAccessorArgs<2>::NumBanksCTAOffset>()'
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:58:20: note: in expansion of macro 'get_compile_time_arg_val'
+   58 |             return get_compile_time_arg_val(NumBanksCTAOffset);
+      |                    ^~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:62:62: note: there is 1 candidate
+   62 | #define get_compile_time_arg_val(arg_idx) get_ct_arg<arg_idx>()
+      |                                           ~~~~~~~~~~~~~~~~~~~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:58:20: note: in expansion of macro 'get_compile_time_arg_val'
+   58 |             return get_compile_time_arg_val(NumBanksCTAOffset);
+      |                    ^~~~~~~~~~~~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:24:20: note: candidate 1: 'template<long unsigned int Idx> constexpr uint32_t get_ct_arg()'
+   24 | constexpr uint32_t get_ct_arg() {
+      |                    ^~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/compile_time_args.h:24:20: note: template argument deduction/substitution failed:
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:60:6: error: 'TensorAccessorArgs<2>::<lambda()>' called in a constant expression
+   54 |     static constexpr uint32_t NumBanksCT = [] {
+      |                                            ~~~~
+   55 |         if constexpr (!is_sharded || num_banks_is_crta) {
+      |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   56 |             return 0;
+      |             ~~~~~~~~~
+   57 |         } else {
+      |         ~~~~~~~~
+   58 |             return get_compile_time_arg_val(NumBanksCTAOffset);
+      |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   59 |         }
+      |         ~
+   60 |     }();
+      |     ~^~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:54:44: note: 'TensorAccessorArgs<2>::<lambda()>' is not usable as a 'constexpr' function because:
+   54 |     static constexpr uint32_t NumBanksCT = [] {
+      |                                            ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h: In instantiation of 'struct TensorAccessorArgs<2>':
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:26:70:   required from here
+   26 |     constexpr auto interleaved_accessor_args = TensorAccessorArgs<2>();
+      |                                                                      ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor_args.h:65:52: error: non-constant condition for static assertion
+   65 |     static_assert(!is_sharded || num_banks_is_crta || NumBanksCT > 0, "Number of banks must be greater than 0!");
+      |                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~
+In file included from ../kernel_includes.hpp:1,
+                 from /home/m48chen/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc:22:
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp: In function 'void kernel_main()':
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: error: class template argument deduction failed:
+   28 |         TensorAccessor(interleaved_accessor_args, input_buffer_addr, input_data_tile_size_bytes);
+      |                                                                                                ^
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: error: no matching function for call to 'TensorAccessor(const TensorAccessorArgs<2>&, const uint32_t&, const uint32_t&)'
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: note: there are 6 candidates
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:74:5: note: candidate 1: 'template<class DSpecT, unsigned int CTA_OFFSET, unsigned int CRTA_OFFSET> TensorAccessor(const TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>&, size_t, uint32_t) -> TensorAccessor<DSpecT>'
+   74 |     TensorAccessor(
+      |     ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:74:5: note: template argument deduction/substitution failed:
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: note:   couldn't deduce template parameter 'DSpecT'
+   28 |         TensorAccessor(interleaved_accessor_args, input_buffer_addr, input_data_tile_size_bytes);
+      |                                                                                                ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:70:5: note: candidate 2: 'template<class DSpecT, class DSpec_, typename std::enable_if<DSpec_::is_static, int>::type <anonymous> > TensorAccessor(size_t, uint32_t) -> TensorAccessor<DSpecT>'
+   70 |     TensorAccessor(const size_t bank_base_address_in = 0, uint32_t page_size_in = 0) :
+      |     ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:70:5: note: candidate expects 2 arguments, 3 provided
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:65:24: note: candidate 3: 'template<class DSpecT, class DSpec_, typename std::enable_if<is_same_v<typename std::decay<_Tp2>::type, DSpecT>, int>::type <anonymous> > TensorAccessor(DSpec_&&, size_t, uint32_t) -> TensorAccessor<DSpecT>'
+   65 |     constexpr explicit TensorAccessor(
+      |                        ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:65:24: note: template argument deduction/substitution failed:
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: note:   couldn't deduce template parameter 'DSpecT'
+   28 |         TensorAccessor(interleaved_accessor_args, input_buffer_addr, input_data_tile_size_bytes);
+      |                                                                                                ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:51:8: note: candidate 4: 'template<class DSpecT> TensorAccessor(TensorAccessor<DSpecT>) -> TensorAccessor<DSpecT>'
+   51 | struct TensorAccessor {
+      |        ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:51:8: note: candidate expects 1 argument, 3 provided
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:410:1: note: candidate 5: 'template<long unsigned int RankCT, long unsigned int NumBanksCT, class TensorShapeWrapper, class ShardShapeWrapper, class BankCoordsWrapper, bool IsInterleaved, bool IsDram> TensorAccessor(tensor_accessor::DistributionSpec<RankCT, NumBanksCT, TensorShapeWrapper, ShardShapeWrapper, BankCoordsWrapper, IsInterleaved, IsDram>, size_t, uint32_t) -> TensorAccessor<tensor_accessor::DistributionSpec<RankCT, NumBanksCT, TensorShapeWrapper, ShardShapeWrapper, BankCoordsWrapper, IsInterleaved, IsDram> >'
+  410 | TensorAccessor(
+      | ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:410:1: note: template argument deduction/substitution failed:
+/home/m48chen/tt-metal/tt_metal/programming_examples/diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp:28:96: note:   'TensorAccessorArgs<2>' is not derived from 'tensor_accessor::DistributionSpec<RankCT, NumBanksCT, TensorShapeWrapper, ShardShapeWrapper, BankCoordsWrapper, IsInterleaved, IsDram>'
+   28 |         TensorAccessor(interleaved_accessor_args, input_buffer_addr, input_data_tile_size_bytes);
+      |                                                                                                ^
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:380:1: note: candidate 6: 'template<unsigned int CTA_OFFSET, unsigned int CRTA_OFFSET> TensorAccessor(const TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>&, size_t, uint32_t) -> TensorAccessor<tensor_accessor::DistributionSpec<TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::RankCT, TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::NumBanksCT, typename tensor_accessor::ArrayWrapperTypeSelectorU32<(! TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::tensor_shape_is_crta), TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::TensorShapeCTAOffset, TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::RankCT>::type, typename tensor_accessor::ArrayWrapperTypeSelectorU32<(! TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::shard_shape_is_crta), TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::ShardShapeCTAOffset, TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::RankCT>::type, typename tensor_accessor::ArrayWrapperTypeSelectorPackedU16<(! TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::bank_coords_is_crta), TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::BankCoordsCTAOffset, TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::NumBanksCT>::type, (! TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::is_sharded), TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>::is_dram> >'
+  380 | TensorAccessor(const TensorAccessorArgs<CTA_OFFSET, CRTA_OFFSET>& args, size_t, uint32_t)
+      | ^~~~~~~~~~~~~~
+/home/m48chen/tt-metal/tt_metal/hw/inc/accessor/tensor_accessor.h:380:1: note: template argument deduction/substitution failed:
+
+backtrace:
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x3a0409) [0x79a3549f3409]
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x54c45f) [0x79a354b9f45f]
+ --- tt::tt_metal::JitBuildState::compile_one(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, tt::tt_metal::JitBuildSettings const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) const
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x5526b4) [0x79a354ba56b4]
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x552642) [0x79a354ba5642]
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x319927) [0x79a35496c927]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x99ee8) [0x79a353c99ee8]
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x3198a2) [0x79a35496c8a2]
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x5523c1) [0x79a354ba53c1]
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x31d835) [0x79a354970835]
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x31c49e) [0x79a35496f49e]
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x31b8a8) [0x79a35496e8a8]
+ --- /lib/x86_64-linux-gnu/libstdc++.so.6(+0xdc253) [0x79a3540dc253]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x79a353c94ac3]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x1268c0) [0x79a353d268c0]
+ (assert.hpp:103)
+2025-11-24 11:27:05.020 | critical |          Always | TT_THROW: /home/m48chen/.cache/tt-metal-cache/5b7a87cca6/11358605694596585868/kernels/reader_binary_1_tile/6944381047652148987//ncrisc/ncrisc.elf: cannot map elf file into memory: No such file or directory (assert.hpp:103)
+2025-11-24 11:27:05.028 | critical |          Always | TT_FATAL: binary not found (assert.hpp:103)
+
+Read unexpected run_mailbox value: 0x40 (expected 0x80 or 0x0)
+Read unexpected run_mailbox value: 0x40 (expected 0x80 or 0x0)
+Read unexpected run_mailbox value: 0x40 (expected 0x80 or 0x0)
+Read unexpected run_mailbox value: 0x40 (expected 0x80 or 0x0)
+Read unexpected run_mailbox value: 0x40 (expected 0x80 or 0x0)
+Read unexpected run_mailbox value: 0x40 (expected 0x80 or 0x0)
+Read unexpected run_mailbox value: 0x40 (expected 0x80 or 0x0)
+Read unexpected run_mailbox value: 0x40 (expected 0x80 or 0x0)
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  TT_FATAL @ /home/m48chen/tt-metal/tt_metal/impl/kernels/kernel.cpp:292: iter != binaries_.end()
+info:
+binary not found
+backtrace:
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x2b61f8) [0x79a3549091f8]
+ --- tt::tt_metal::Kernel::binaries(unsigned long) const
+ --- tt::tt_metal::program_dispatch::finalize_kernel_bins(tt::tt_metal::IDevice*, unsigned int, std::unordered_map<unsigned int, std::shared_ptr<tt::tt_metal::Kernel>, std::hash<unsigned int>, std::equal_to<unsigned int>, std::allocator<std::pair<unsigned int const, std::shared_ptr<tt::tt_metal::Kernel> > > > const&, std::vector<std::shared_ptr<tt::tt_metal::KernelGroup>, std::allocator<std::shared_ptr<tt::tt_metal::KernelGroup> > >&, unsigned int, unsigned int&, unsigned int&)
+ --- /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(_ZN2tt8tt_metal6detail11ProgramImpl24finalize_program_offsetsEPNS0_7IDeviceERKSt8functionIFRSt13unordered_mapIjSt10shared_ptrINS0_6KernelEESt4hashIjESt8equal_toIjESaISt4pairIKjS9_EEEjEERKS5_IFRSt6vectorIS7_INS0_11KernelGroupEESaISQ_EEjEERKS5_IFRKSO_INS0_9SemaphoreESaISY_EEvEESt4spanIPS2_Lm18446744073709551615EE+0x214) [0x79a354a2b7b4]
+ --- tt::tt_metal::distributed::MeshWorkloadImpl::finalize_offsets(tt::tt_metal::distributed::MeshDevice*)
+ --- tt::tt_metal::distributed::MeshWorkloadImpl::compile(tt::tt_metal::distributed::MeshDevice*)
+ --- tt::tt_metal::distributed::EnqueueMeshWorkload(tt::tt_metal::distributed::MeshCommandQueue&, tt::tt_metal::distributed::MeshWorkload&, bool)
+ --- /home/m48chen/tt-metal/build/programming_examples/diode_equation_single_v2(+0x17d2e) [0x5f9da323ad2e]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x79a353c29d90]
+ --- /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80) [0x79a353c29e40]
+ --- /home/m48chen/tt-metal/build/programming_examples/diode_equation_single_v2(+0x15cf5) [0x5f9da3238cf5]
+
+[tauceti:1276782] *** Process received signal ***
+[tauceti:1276782] Signal: Aborted (6)
+[tauceti:1276782] Signal code:  (-6)
+[tauceti:1276782] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x79a353c42520]
+[tauceti:1276782] [ 1] /lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x79a353c969fc]
+[tauceti:1276782] [ 2] /lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x79a353c42476]
+[tauceti:1276782] [ 3] /lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x79a353c287f3]
+[tauceti:1276782] [ 4] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xa2b9e)[0x79a3540a2b9e]
+[tauceti:1276782] [ 5] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae20c)[0x79a3540ae20c]
+[tauceti:1276782] [ 6] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae277)[0x79a3540ae277]
+[tauceti:1276782] [ 7] /lib/x86_64-linux-gnu/libstdc++.so.6(+0xae4d8)[0x79a3540ae4d8]
+[tauceti:1276782] [ 8] /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(_ZN2tt6assert6detail13tt_throw_implIJN3fmt3v117fstringIJEEEEEEvPKciS8_S8_DpRKT_+0x40c)[0x79a3549300fc]
+[tauceti:1276782] [ 9] /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(+0x2b61f8)[0x79a3549091f8]
+[tauceti:1276782] [10] /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(_ZNK2tt8tt_metal6Kernel8binariesEm+0x12b)[0x79a3549f053b]
+[tauceti:1276782] [11] /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(_ZN2tt8tt_metal16program_dispatch20finalize_kernel_binsEPNS0_7IDeviceEjRKSt13unordered_mapIjSt10shared_ptrINS0_6KernelEESt4hashIjESt8equal_toIjESaISt4pairIKjS7_EEERSt6vectorIS5_INS0_11KernelGroupEESaISL_EEjRjSP_+0x508)[0x79a354a3c708]
+[tauceti:1276782] [12] /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(_ZN2tt8tt_metal6detail11ProgramImpl24finalize_program_offsetsEPNS0_7IDeviceERKSt8functionIFRSt13unordered_mapIjSt10shared_ptrINS0_6KernelEESt4hashIjESt8equal_toIjESaISt4pairIKjS9_EEEjEERKS5_IFRSt6vectorIS7_INS0_11KernelGroupEESaISQ_EEjEERKS5_IFRKSO_INS0_9SemaphoreESaISY_EEvEESt4spanIPS2_Lm18446744073709551615EE+0x214)[0x79a354a2b7b4]
+[tauceti:1276782] [13] /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(_ZN2tt8tt_metal11distributed16MeshWorkloadImpl16finalize_offsetsEPNS1_10MeshDeviceE+0x10d)[0x79a354c4ff3d]
+[tauceti:1276782] [14] /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(_ZN2tt8tt_metal11distributed16MeshWorkloadImpl7compileEPNS1_10MeshDeviceE+0x281)[0x79a354c4fcc1]
+[tauceti:1276782] [15] /home/m48chen/tt-metal/build_Release/tt_metal/libtt_metal.so(_ZN2tt8tt_metal11distributed19EnqueueMeshWorkloadERNS1_16MeshCommandQueueERNS1_12MeshWorkloadEb+0x2e)[0x79a354c0858e]
+[tauceti:1276782] [16] /home/m48chen/tt-metal/build/programming_examples/diode_equation_single_v2(+0x17d2e)[0x5f9da323ad2e]
+[tauceti:1276782] [17] /lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x79a353c29d90]
+[tauceti:1276782] [18] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x79a353c29e40]
+[tauceti:1276782] [19] /home/m48chen/tt-metal/build/programming_examples/diode_equation_single_v2(+0x15cf5)[0x5f9da3238cf5]
+[tauceti:1276782] *** End of error message ***

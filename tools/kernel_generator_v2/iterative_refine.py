@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 
 from config import TT_METAL_HOME, MODEL_DEFAULT, TEMPERATURE, MAX_TOKENS
-from host_api_retriever import retrieve_host_api_signatures, create_host_template
+from host_api_retriever import retrieve_host_api_signatures
 from retriever import retrieve_host_examples
 
 logger = logging.getLogger("kernel_generator_v2")
