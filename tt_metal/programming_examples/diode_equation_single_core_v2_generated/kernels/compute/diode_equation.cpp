@@ -1,4 +1,4 @@
-// COMPUTE KERNEL
+// COMPUTE KERNEL: diode_equation.cpp
 #include "compute_kernel_api.h"
 #include "compute_kernel_api/common.h"
 #include "compute_kernel_api/tile_move_copy.h"
@@ -39,15 +39,21 @@ void MAIN {
     //
     // Fused operations
     //
-    // Compute the diode current using the SFPU.
+    // Compute the division of V by Vj using the SFPU.
     div_binary_tile_init();
-    div_binary_tile(0, 1, 4);  // V/vj
+    div_binary_tile(0, 1, 4);  // V / Vj
+
+    // Compute the exp of the result using the SFPU.
     exp_tile_init();
-    exp_tile(4);  // exp(V/vj)
+    exp_tile(4);  // exp(V/Vj)
+
+    // Subtract 1 from the result using the SFPU.
     sub_binary_tile_init();
-    sub_binary_tile(4, 3, 4);  // exp(V/vj) - 1
+    sub_binary_tile(4, 3, 4);  // exp(V/Vj) - 1
+
+    // Multiply the result by Isat using the SFPU.
     mul_binary_tile_init();
-    mul_binary_tile(4, 2, 0);  // isat * (exp(V/vj) - 1)
+    mul_binary_tile(4, 2, 0);  // Isat * (exp(V/Vj) - 1)
 
     // Wait for result to be done and data stored back to the circular buffer
     tile_regs_commit();

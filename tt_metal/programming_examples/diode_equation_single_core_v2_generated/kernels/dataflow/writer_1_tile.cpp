@@ -1,4 +1,4 @@
-// WRITER KERNEL
+// WRITER KERNEL: writer_1_tile.cpp
 #include "dataflow_api.h"
 
 #include <cstdint>

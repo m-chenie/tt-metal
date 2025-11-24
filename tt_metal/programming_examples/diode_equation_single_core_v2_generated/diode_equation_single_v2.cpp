@@ -1,4 +1,4 @@
-// HOST CODE
+// HOST CODE: diode_equation_single_v2.cpp
 #include <tt-metalium/host_api.hpp>
 #include <tt-metalium/tensor_accessor_args.hpp>
 #include <tt-metalium/tilize_utils.hpp>
@@ -9,13 +9,50 @@
 #include <random>
 #include <cstdint>
 #include <vector>
+#include <fmt/core.h>
 
 using namespace tt;
 using namespace tt::tt_metal;
 
-#ifndef OVERRIDE_KERNEL_PREFIX
-#define OVERRIDE_KERNEL_PREFIX ""
-#endif
+// Diode equation: I = isat × (exp(V/vj) - 1)
+void golden_diode_equation(const std::vector<float>& v, std::vector<float>& i, float isat, float vj) {
+    for (size_t idx = 0; idx < v.size(); ++idx) {
+        i[idx] = isat * (std::exp(v[idx] / vj) - 1.0f);
+    }
+}
+
+float check_bfloat16_vector_pcc(const std::vector<bfloat16>& vec_a, const std::vector<bfloat16>& vec_b) {
+    float x_mean = 0.0f;
+    float y_mean = 0.0f;
+
+    for (size_t i = 0; i < vec_a.size(); i++) {
+        x_mean += static_cast<float>(vec_a[i]);
+        y_mean += static_cast<float>(vec_b[i]);
+    }
+
+    x_mean /= vec_a.size();
+    y_mean /= vec_b.size();
+
+    float covariance = 0.0f;
+    float x_stddev = 0.0f;
+    float y_stddev = 0.0f;
+
+    for (size_t i = 0; i < vec_a.size(); i++) {
+        float x_diff = static_cast<float>(vec_a[i]) - x_mean;
+        float y_diff = static_cast<float>(vec_b[i]) - y_mean;
+
+        covariance += x_diff * y_diff;
+        x_stddev += x_diff * x_diff;
+        y_stddev += y_diff * y_diff;
+    }
+
+    covariance /= vec_a.size();
+    x_stddev /= vec_a.size();
+    y_stddev /= vec_b.size();
+
+    float correlation_coefficient_ = covariance / (std::sqrt(x_stddev) * std::sqrt(y_stddev));
+    return correlation_coefficient_;
+}
 
 int main() {
     // Device setup
@@ -41,13 +78,12 @@ int main() {
     }
 
     // Calculate golden function results on CPU
-    std::vector<bfloat16> golden_vec(constants::TILE_HW, 0);
+    std::vector<float> golden_vec_float(src_vec.size());
+    std::vector<float> src_vec_float(src_vec.size());
     for (size_t i = 0; i < src_vec.size(); ++i) {
-        float isat = 1.0f;  // saturation current
-        float vj = 1.0f;    // thermal voltage
-        float v = static_cast<float>(src_vec[i]);
-        golden_vec[i] = bfloat16(isat * (std::exp(v / vj) - 1));
+        src_vec_float[i] = static_cast<float>(src_vec[i]);
     }
+    golden_diode_equation(src_vec_float, golden_vec_float, 1.0f, 0.5f);
 
     // Tilize the input vectors to match the expected tiled layout for the device
     src_vec = tilize_nfaces(src_vec, constants::TILE_WIDTH, constants::TILE_HEIGHT);
@@ -72,6 +108,12 @@ int main() {
             .set_page_size(src_cb_index, single_tile_size);
     tt_metal::CreateCircularBuffer(program, core, cb_src_config);
 
+    constexpr uint32_t isat_cb_index = CBIndex::c_1;
+    CircularBufferConfig cb_isat_config =
+        CircularBufferConfig(single_tile_size, {{isat_cb_index, tt::DataFormat::Float16_b}})
+            .set_page_size(isat_cb_index, single_tile_size);
+    tt_metal::CreateCircularBuffer(program, core, cb_isat_config);
+
     constexpr uint32_t result_cb_index = CBIndex::c_16;
     CircularBufferConfig cb_result_config =
         CircularBufferConfig(single_tile_size, {{result_cb_index, tt::DataFormat::Float16_b}})
@@ -80,26 +122,26 @@ int main() {
 
     // Kernels setup
     // Data movement kernels
-    std::vector<uint32_t> reader_compile_time_args = {src_cb_index};
+    std::vector<uint32_t> reader_compile_time_args = {src_cb_index, isat_cb_index};
     TensorAccessorArgs(*src_dram_buffer).append_to(reader_compile_time_args);
     KernelHandle reader_kernel_id = CreateKernel(
         program,
-        OVERRIDE_KERNEL_PREFIX "diode_equation_single_core_v2_generated/kernels/dataflow/reader_binary_1_tile.cpp",
+        "diode_equation/kernels/dataflow/reader.cpp",
         core,
         tt::tt_metal::ReaderDataMovementConfig{reader_compile_time_args});
     std::vector<uint32_t> writer_compile_time_args = {result_cb_index};
     TensorAccessorArgs(*dst_dram_buffer).append_to(writer_compile_time_args);
     KernelHandle writer_kernel_id = CreateKernel(
         program,
-        OVERRIDE_KERNEL_PREFIX "diode_equation_single_core_v2_generated/kernels/dataflow/writer_1_tile.cpp",
+        "diode_equation/kernels/dataflow/writer.cpp",
         core,
         tt::tt_metal::WriterDataMovementConfig{writer_compile_time_args});
 
     // Compute kernel
-    std::vector<uint32_t> compute_compile_time_args = {src_cb_index, result_cb_index};
+    std::vector<uint32_t> compute_compile_time_args = {src_cb_index, isat_cb_index, result_cb_index};
     CreateKernel(
         program,
-        OVERRIDE_KERNEL_PREFIX "diode_equation_single_core_v2_generated/kernels/compute/diode_equation.cpp",
+        "diode_equation/kernels/compute/compute.cpp",
         core,
         tt::tt_metal::ComputeConfig{.compile_args = compute_compile_time_args});
 
@@ -113,42 +155,18 @@ int main() {
     distributed::Finish(cq);
 
     // Data transfer back to host machine
-    std::vector<bfloat16> result_vec(constants::TILE_HW, 0);
+    std::vector<bfloat16> result_vec(src_vec.size(), 0);
     distributed::EnqueueReadMeshBuffer(cq, result_vec, dst_dram_buffer, true);
 
     // Reverse the tilization to get the result in the row-major format that the CPU expects
     result_vec = untilize_nfaces(result_vec, constants::TILE_WIDTH, constants::TILE_HEIGHT);
 
     // Calculate the Pearson correlation coefficient (PCC) between the golden vector and the result vector
-    // This is a measure of how similar the two vectors are.
-    // A PCC close to 1 indicates that the two vectors are very similar.
-    float pearson = 0.0f;
-    float x_mean = 0.0f;
-    float y_mean = 0.0f;
-    float covariance = 0.0f;
-    float x_stddev = 0.0f;
-    float y_stddev = 0.0f;
-    for (size_t i = 0; i < golden_vec.size(); i++) {
-        x_mean += static_cast<float>(golden_vec[i]);
-        y_mean += static_cast<float>(result_vec[i]);
+    std::vector<bfloat16> golden_vec(result_vec.size());
+    for (size_t i = 0; i < result_vec.size(); ++i) {
+        golden_vec[i] = bfloat16(golden_vec_float[i]);
     }
-    x_mean /= golden_vec.size();
-    y_mean /= result_vec.size();
-
-    for (size_t i = 0; i < golden_vec.size(); i++) {
-        float x_diff = static_cast<float>(golden_vec[i]) - x_mean;
-        float y_diff = static_cast<float>(result_vec[i]) - y_mean;
-
-        covariance += x_diff * y_diff;
-        x_stddev += x_diff * x_diff;
-        y_stddev += y_diff * y_diff;
-    }
-
-    covariance /= golden_vec.size();
-    x_stddev /= golden_vec.size();
-    y_stddev /= result_vec.size();
-
-    pearson = covariance / (std::sqrt(x_stddev) * std::sqrt(y_stddev));
+    const float pearson = check_bfloat16_vector_pcc(golden_vec, result_vec);
     fmt::print("Metalium vs Golden -- PCC = {}\n", pearson);
     TT_FATAL(pearson > 0.999, "PCC not high enough. Result PCC: {}, Expected PCC: 0.999", pearson);
 
