@@ -8,12 +8,22 @@ def build_system_prompt(op: str, core_mode: str, retrieved: List[Dict]) -> str:
     op_desc = OPERATIONS[op]["description"]
     op_cfg = OPERATIONS[op]
     core_desc = CORE_MODES[core_mode]["description"]
+    op_type = op_cfg.get("operation_type", "binary")
+
     parts = [
         "You are an expert TT-Metal kernel developer for Tenstorrent hardware.",
         f"Target: {op} ({op_desc}), mode: {core_desc}.",
         "Follow patterns from the retrieved examples and respect core-mode specific dataflow/compute structure.",
         "",
     ]
+
+    # Add SFPU-specific constraints
+    if op_type == "sfpu_chain":
+        parts.append("CRITICAL CONSTRAINTS FOR SFPU OPERATIONS:")
+        parts.append("- ALL computation MUST use SFPU operations (element-wise on DST registers)")
+        parts.append("- DO NOT create DRAM buffers for scalar constants - initialize them directly in circular buffers")
+        parts.append("- Follow the sfpu_eltwise_chain pattern for constant initialization in reader kernel")
+        parts.append("")
 
     # Deduplicate by path (keep first occurrence)
     seen_paths = set()
@@ -24,12 +34,26 @@ def build_system_prompt(op: str, core_mode: str, retrieved: List[Dict]) -> str:
             seen_paths.add(path)
             unique_docs.append(doc)
 
-    # STAGE 1: Retrieve API signatures from examples + operation requirements
+    # STAGE 1: Retrieve API signatures - use explicit required functions if specified
     formula = op_cfg.get("formula", "")
     math_steps = op_cfg.get("mathematical_steps", "")
+    required_compute_functions = op_cfg.get("required_compute_functions", None)
+
+    # For SFPU operations, use focused header directories
+    if op_type == "sfpu_chain":
+        from config import SFPU_HEADER_DIRS
+
+        header_dirs = SFPU_HEADER_DIRS
+    else:
+        header_dirs = None  # Use default API_HEADER_DIRS
 
     api_signatures = retrieve_api_signatures(
-        retrieved_examples=unique_docs, operation_description=op_desc, formula=formula, math_steps=math_steps
+        retrieved_examples=unique_docs,
+        operation_description=op_desc,
+        formula=formula,
+        math_steps=math_steps,
+        header_dirs=header_dirs,
+        required_compute_functions=required_compute_functions,
     )
 
     # Add API signatures section BEFORE examples
@@ -138,7 +162,6 @@ def build_host_system_prompt(op: str, core_mode: str, host_examples: List[Dict])
     Build system prompt specifically for host code generation.
 
     Includes:
-    1. Canonical host code template showing correct structure
     2. Complete host code examples
     3. Host API signatures extracted from examples
     """
@@ -154,11 +177,6 @@ def build_host_system_prompt(op: str, core_mode: str, host_examples: List[Dict])
         "Generate correct, modern TT-Metal host code following the canonical structure and examples.",
         "",
     ]
-
-    # Add canonical template first - shows correct headers and structure
-    template = create_host_template()
-    parts.append(template)
-    parts.append("")
 
     # Retrieve and add host API signatures
     api_signatures = retrieve_host_api_signatures(host_examples)
@@ -192,7 +210,6 @@ def build_host_system_prompt(op: str, core_mode: str, host_examples: List[Dict])
     parts.append("- Use `distributed::MeshDevice` NOT `Device`")
     parts.append("- Use `distributed::MeshBuffer` NOT `Buffer`")
     parts.append("- All distributed APIs require `distributed::` namespace prefix")
-    parts.append("- Follow the canonical template structure exactly")
     parts.append("- CMakeLists.txt MUST include: find_package(TT-Metalium) and target_link_libraries(...TT::Metalium)")
 
     return "\n\n".join(parts)
@@ -218,7 +235,6 @@ def build_host_user_prompt(op: str, core_mode: str) -> str:
     return f"""Generate complete host code (.cpp file) AND CMakeLists.txt for {op_desc} ({core_mode}-core).
 
 Requirements:
-- Follow the canonical template structure EXACTLY
 - Use correct headers: `#include <tt-metalium/host_api.hpp>` with angle brackets
 - Use `distributed::MeshDevice::create_unit_mesh()` for device setup
 - Create DRAM buffers using `distributed::MeshBuffer::create()`

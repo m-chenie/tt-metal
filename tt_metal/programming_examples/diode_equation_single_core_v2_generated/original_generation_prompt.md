@@ -12,92 +12,19 @@ Follow patterns from the retrieved examples and respect core-mode specific dataf
 
 
 
+CRITICAL CONSTRAINTS FOR SFPU OPERATIONS:
+
+- ALL computation MUST use SFPU operations (element-wise on DST registers)
+
+- DO NOT create DRAM buffers for scalar constants - initialize them directly in circular buffers
+
+- Follow the sfpu_eltwise_chain pattern for constant initialization in reader kernel
+
+
+
 ## Relevant API Functions
 
 ```cpp
-// Function: add_binary_tile
-// Header: tt_metal/include/compute_kernel_api/eltwise_binary_sfpu.h
-* | idst1          | The index of the tile in DST register buffer to use as second operand | uint32_t | Must be less than the size of the DST register buffer | True     |
-* | odst           | The index of the tile in DST register buffer to use as output         | uint32_t | Must be less than the size of the DST register buffer | True     |
-*/
-// clang-format on
-ALWI void add_binary_tile(uint32_t idst0, uint32_t idst1, uint32_t odst)
-
-// Function: add_binary_tile_init
-// Header: tt_metal/include/compute_kernel_api/eltwise_binary_sfpu.h
-/**
-* Please refer to documentation for any_init.
-*/
-ALWI void add_binary_tile_init()
-
-// Function: add_unary_tile
-// Header: tt_metal/include/compute_kernel_api/eltwise_unary/binop_with_scalar.h
-* | param1         | fp32 value scalar encoded as uint32                                        | uint32_t | Must be less than the size of the DST register buffer       | True     |
-*/
-// clang-format on
-ALWI void add_unary_tile(uint32_t idst, uint32_t param1)
-
-// Function: add_unary_tile_int32
-// Header: tt_metal/include/compute_kernel_api/eltwise_unary/binop_with_scalar.h
-* | param1          | int32 value scalar encoded as uint32                                       | uint32_t | Must be less than the size of the DST register buffer | True     |
-*/
-// clang-format on
-ALWI void add_unary_tile_int32(uint32_t idst, uint32_t param1)
-
-// Function: binary_bitwise_tile_init
-// Header: tt_metal/include/compute_kernel_api/binary_bitwise_sfpu.h
-/**
-* Please refer to documentation for any_init.
-*/
-ALWI void binary_bitwise_tile_init()
-
-// Function: binop_with_scalar_tile_init
-// Header: tt_metal/include/compute_kernel_api/eltwise_unary/binop_with_scalar.h
-/**
-* Please refer to documentation for any_init.
-*/
-ALWI void binop_with_scalar_tile_init()
-
-// Function: bitwise_and_binary_tile
-// Header: tt_metal/include/compute_kernel_api/binary_bitwise_sfpu.h
-* | idst1          | The index of the tile in DST register buffer to use as second operand | uint32_t | Must be less than the size of the DST register buffer | True     |
-* | odst           | The index of the tile in DST register buffer to use as output         | uint32_t | Must be less than the size of the DST register buffer | True     |
-*/
-// clang-format on
-ALWI void bitwise_and_binary_tile(uint32_t idst0, uint32_t idst1, uint32_t odst)
-
-// Function: bitwise_and_uint16_binary_tile
-// Header: tt_metal/include/compute_kernel_api/binary_bitwise_sfpu.h
-ALWI void bitwise_and_uint16_binary_tile(uint32_t idst0, uint32_t idst1, uint32_t odst)
-
-// Function: bitwise_and_uint32_binary_tile
-// Header: tt_metal/include/compute_kernel_api/binary_bitwise_sfpu.h
-ALWI void bitwise_and_uint32_binary_tile(uint32_t idst0, uint32_t idst1, uint32_t odst)
-
-// Function: bitwise_or_binary_tile
-// Header: tt_metal/include/compute_kernel_api/binary_bitwise_sfpu.h
-ALWI void bitwise_or_binary_tile(uint32_t idst0, uint32_t idst1, uint32_t odst)
-
-// Function: bitwise_or_uint16_binary_tile
-// Header: tt_metal/include/compute_kernel_api/binary_bitwise_sfpu.h
-ALWI void bitwise_or_uint16_binary_tile(uint32_t idst0, uint32_t idst1, uint32_t odst)
-
-// Function: bitwise_or_uint32_binary_tile
-// Header: tt_metal/include/compute_kernel_api/binary_bitwise_sfpu.h
-ALWI void bitwise_or_uint32_binary_tile(uint32_t idst0, uint32_t idst1, uint32_t odst)
-
-// Function: bitwise_xor_binary_tile
-// Header: tt_metal/include/compute_kernel_api/binary_bitwise_sfpu.h
-ALWI void bitwise_xor_binary_tile(uint32_t idst0, uint32_t idst1, uint32_t odst)
-
-// Function: bitwise_xor_uint16_binary_tile
-// Header: tt_metal/include/compute_kernel_api/binary_bitwise_sfpu.h
-ALWI void bitwise_xor_uint16_binary_tile(uint32_t idst0, uint32_t idst1, uint32_t odst)
-
-// Function: bitwise_xor_uint32_binary_tile
-// Header: tt_metal/include/compute_kernel_api/binary_bitwise_sfpu.h
-ALWI void bitwise_xor_uint32_binary_tile(uint32_t idst0, uint32_t idst1, uint32_t odst)
-
 // Function: cb_pop_front
 // Header: tt_metal/include/compute_kernel_api/cb_api.h
 * | cb_id     | The index of the cirular buffer (CB) | uint32_t | 0 to 31                                                                                           | True     |
@@ -105,6 +32,28 @@ ALWI void bitwise_xor_uint32_binary_tile(uint32_t idst0, uint32_t idst1, uint32_
 */
 // clang-format on
 ALWI void cb_pop_front(uint32_t cbid, uint32_t ntiles)
+
+// Header: tt_metal/hw/inc/dataflow_api.h
+* | num_tiles | The number of tiles to be popped      | uint32_t | It must be less or equal than the size of the CB (the total number of tiles that fit into the CB) | True     |
+*/
+// clang-format on
+void cb_pop_front(int32_t operand, int32_t num_pages)
+
+// Header: tt_metal/hw/inc/dataflow_api.h
+* A non-blocking call that tells the caller if the specified number of pages are available in the specified circular
+* buffer (CB). This call is used by the consumer of the CB to see if the prodcuers has fill the CB with at least the
+* specified number of tiles. Important note: in case multiple calls of cb_wait_front(n) are issued without a paired
+* cb_pop_front() call, n is expected to be incremented by the user to be equal to a cumulative total of tiles. Example:
+* 4 calls of cb_wait_front(8) followed by
+a cb_pop_front(32)
+
+// Header: tt_metal/hw/inc/dataflow_api.h
+* A non-blocking call that tells the caller if the specified number of pages are available in the specified circular
+* buffer (CB). This call is used by the consumer of the CB to see if the prodcuers has fill the CB with at least the
+* specified number of tiles. Important note: in case multiple calls of cb_wait_front(n) are issued without a paired
+* cb_pop_front() call, n is expected to be incremented by the user to be equal to a cumulative total of tiles. Example:
+* 4 calls of cb_wait_front(8) followed by
+a cb_pop_front(32)
 
 // Function: cb_push_back
 // Header: tt_metal/include/compute_kernel_api/cb_api.h
@@ -114,6 +63,12 @@ ALWI void cb_pop_front(uint32_t cbid, uint32_t ntiles)
 // clang-format on
 ALWI void cb_push_back(uint32_t cbid, uint32_t ntiles)
 
+// Header: tt_metal/hw/inc/dataflow_api.h
+* | num_tiles | The number of tiles to be pushed      | uint32_t | It must be less or equal than the size of the CB (the total number of tiles that fit into the CB) | True     |
+*/
+// clang-format on
+void cb_push_back(const int32_t operand, const int32_t num_pages)
+
 // Function: cb_reserve_back
 // Header: tt_metal/include/compute_kernel_api/cb_api.h
 * | cb_id     | The index of the cirular buffer (CB) | uint32_t | 0 to 31                                                                                           | True     |
@@ -122,6 +77,12 @@ ALWI void cb_push_back(uint32_t cbid, uint32_t ntiles)
 // clang-format on
 ALWI void cb_reserve_back(uint32_t cbid, uint32_t ntiles)
 
+// Header: tt_metal/hw/inc/dataflow_api.h
+* | num_tiles | The number of free tiles to wait for  | uint32_t | It must be less or equal than the size of the CB (the total number of tiles that fit into the CB) | True     |
+*/
+// clang-format on
+void cb_reserve_back(int32_t operand, int32_t num_pages)
+
 // Function: cb_wait_front
 // Header: tt_metal/include/compute_kernel_api/cb_api.h
 * | cb_id     | The index of the cirular buffer (CB) | uint32_t | 0 to 31                                                                                           | True     |
@@ -129,6 +90,44 @@ ALWI void cb_reserve_back(uint32_t cbid, uint32_t ntiles)
 * */
 // clang-format on
 ALWI void cb_wait_front(uint32_t cbid, uint32_t ntiles)
+
+// Header: tt_metal/hw/inc/dataflow_api.h
+// clang-format off
+/**
+* A non-blocking call that tells the caller if the specified number of pages are available in the specified circular
+* buffer (CB). This call is used by the consumer of the CB to see if the prodcuers has fill the CB with at least the
+* specified number of tiles. Important note: in case multiple calls
+of cb_wait_front(n)
+
+// Header: tt_metal/hw/inc/dataflow_api.h
+* A non-blocking call that tells the caller if the specified number of pages are available in the specified circular
+* buffer (CB). This call is used by the consumer of the CB to see if the prodcuers has fill the CB with at least the
+* specified number of tiles. Important note: in case multiple calls of cb_wait_front(n) are issued without a paired
+* cb_pop_front() call, n is expected to be incremented by the user to be equal to a cumulative total of tiles. Example:
+* 4 calls
+of cb_wait_front(8)
+
+// Header: tt_metal/hw/inc/dataflow_api.h
+// clang-format off
+/**
+* A non-blocking call that tells the caller if the specified number of pages are available in the specified circular
+* buffer (CB). This call is used by the consumer of the CB to see if the prodcuers has fill the CB with at least the
+* specified number of tiles. Important note: in case multiple calls
+of cb_wait_front(n)
+
+// Header: tt_metal/hw/inc/dataflow_api.h
+* A non-blocking call that tells the caller if the specified number of pages are available in the specified circular
+* buffer (CB). This call is used by the consumer of the CB to see if the prodcuers has fill the CB with at least the
+* specified number of tiles. Important note: in case multiple calls of cb_wait_front(n) are issued without a paired
+* cb_pop_front() call, n is expected to be incremented by the user to be equal to a cumulative total of tiles. Example:
+* 4 calls
+of cb_wait_front(8)
+
+// Header: tt_metal/hw/inc/dataflow_api.h
+* | num_tiles | The number of tiles to wait for       | uint32_t | It must be less or equal than the size of the CB (the total number of tiles that fit into the CB) |          |
+*/
+// clang-format on
+void cb_wait_front(int32_t operand, int32_t num_pages)
 
 // Function: copy_tile
 // Header: tt_metal/include/compute_kernel_api/tile_move_copy.h
@@ -142,9 +141,9 @@ ALWI void copy_tile(uint32_t in_cb_id, uint32_t in_tile_index, uint32_t dst_tile
 // Header: tt_metal/include/compute_kernel_api/eltwise_binary_sfpu.h
 ALWI void div_binary_tile(uint32_t idst0, uint32_t idst1, uint32_t odst)
 
-// Function: div_unary_tile
-// Header: tt_metal/include/compute_kernel_api/eltwise_unary/binop_with_scalar.h
-ALWI void div_unary_tile(uint32_t idst, uint32_t param1)
+// Function: div_binary_tile_init
+// Header: tt_metal/include/compute_kernel_api/eltwise_binary_sfpu.h
+ALWI void div_binary_tile_init()
 
 // Function: exp_tile
 // Header: tt_metal/include/compute_kernel_api/eltwise_unary/exp.h
@@ -157,41 +156,114 @@ ALWI void exp_tile(uint32_t idst, int vector_mode = (int)
 */
 ALWI void exp_tile_init()
 
+// Function: get_read_ptr
+// Header: tt_metal/hw/inc/dataflow_api.h
+* | operand   | The index of the circular buffer (CB) | uint32_t | 0 to 31     | True     |
+*/
+// clang-format on
+uint32_t get_read_ptr(uint32_t operand)
+
+// Header: tt_metal/hw/inc/dataflow_api.h
+uint32_t get_read_ptr()
+
+// Function: get_tile_size
+// Header: tt_metal/hw/inc/dataflow_api.h
+// this API is used by both the reader and writer side of the CB
+// it uses unpack_src_format, but because unpack_src_format == pack_dst_format, we can use either
+int32_t get_tile_size(const std::int32_t operand)
+
+// Header: tt_metal/hw/inc/dataflow_api.h
+uint32_t get_tile_size()
+
+// Function: get_write_ptr
+// Header: tt_metal/hw/inc/dataflow_api.h
+* | operand   | The index of the circular buffer (CB) | uint32_t | 0 to 31     | True     |
+*/
+// clang-format on
+uint32_t get_write_ptr(uint32_t operand)
+
+// Header: tt_metal/hw/inc/dataflow_api.h
+uint32_t get_write_ptr()
+
 // Function: init_sfpu
 // Header: tt_metal/include/compute_kernel_api/eltwise_unary/eltwise_unary.h
 ALWI void init_sfpu(uint32_t icb, uint32_t ocb)
-
-// Function: mask_posinf_tile
-// Header: tt_metal/include/compute_kernel_api/mask.h
-ALWI void mask_posinf_tile(uint32_t idst_data, uint32_t idst2_mask)
-
-// Function: mask_tile
-// Header: tt_metal/include/compute_kernel_api/mask.h
-* | dst_mask_index | The index of the tile in DST REG for the mask                              | uint32_t   | Must be less than the acquired size of DST REG        | True     |
-* | data_format    | The format of the data and mask (supports Float16, Float16_b, and Int32)   | DataFormat | Must be a valid data format                           | False    |
-*/
-// clang-format on
-ALWI void mask_tile(uint32_t idst_data, uint32_t idst2_mask, DataFormat data_format = DataFormat::Float16_b)
-
-// Function: mask_tile_init
-// Header: tt_metal/include/compute_kernel_api/mask.h
-ALWI void mask_tile_init()
 
 // Function: mul_binary_tile
 // Header: tt_metal/include/compute_kernel_api/eltwise_binary_sfpu.h
 ALWI void mul_binary_tile(uint32_t idst0, uint32_t idst1, uint32_t odst)
 
-// Function: mul_tiles
-// Header: tt_metal/include/compute_kernel_api/eltwise_binary.h
-* | in1_tile_index | The index of tile B within the second CB                 | uint32_t | Must be less than the size of the CB           | True     |
-* | dst_tile_index | The index of the tile in DST REG for the result C        | uint32_t | Must be less than the acquired size of DST REG | True     |
+// Function: mul_binary_tile_init
+// Header: tt_metal/include/compute_kernel_api/eltwise_binary_sfpu.h
+ALWI void mul_binary_tile_init()
+
+// Function: noc_async_read_barrier
+// Header: tt_metal/hw/inc/dataflow_api.h
+* | Argument | Description                          | Type     | Valid Range | Required |
+* |----------|--------------------------------------|----------|-------------|----------|
+* | noc      | Which NOC to query on                | uint8_t  | 0 or 1      | False    |
+*/
+void noc_async_read_barrier(uint8_t noc = noc_index)
+
+// Function: noc_async_read_tile
+// Header: tt_metal/hw/inc/dataflow_api.h
 */
 // clang-format on
-ALWI void mul_tiles(uint32_t icb0, uint32_t icb1, uint32_t itile0, uint32_t itile1, uint32_t idst)
+void noc_async_read_tile(
+    const uint32_t id,
+    const InterleavedAddrGen<DRAM>& addrgen,
+    uint32_t dst_local_l1_addr,
+    uint32_t offset = 0,
+    uint8_t noc = noc_index)
 
-// Function: mul_unary_tile
-// Header: tt_metal/include/compute_kernel_api/eltwise_unary/binop_with_scalar.h
-ALWI void mul_unary_tile(uint32_t idst, uint32_t param1)
+// Header: tt_metal/hw/inc/dataflow_api.h
+*/
+// clang-format on
+void noc_async_read_tile(
+    const uint32_t id,
+    const TensorAccessor<DSpec>& addrgen,
+    uint32_t dst_local_l1_addr,
+    uint32_t offset = 0,
+    uint8_t noc = noc_index)
+
+// Header: tt_metal/hw/inc/dataflow_api.h
+*/
+// clang-format on
+void noc_async_read_tile(
+    const uint32_t id,
+    const InterleavedAddrGenFast<DRAM, tile_hw>& addrgen,
+    uint32_t dst_local_l1_addr,
+    uint32_t offset = 0,
+    uint8_t noc = noc_index)
+
+// Function: noc_async_write_barrier
+// Header: tt_metal/hw/inc/dataflow_api.h
+* |----------|--------------------------------------|----------|-------------|----------|
+* | noc      | Which NOC to query on                | uint8_t  | 0 or 1      | False    |
+*/
+void noc_async_write_barrier(uint8_t noc = noc_index)
+
+// Function: noc_async_write_tile
+// Header: tt_metal/hw/inc/dataflow_api.h
+* Refer to template <typename AddrGen> noc_async_write_page for a generic implementation and more details.
+*/
+void noc_async_write_tile(
+    const uint32_t id, const InterleavedAddrGen<DRAM>& addrgen, uint32_t src_local_l1_addr, uint8_t noc = noc_index)
+
+// Header: tt_metal/hw/inc/dataflow_api.h
+* | tile_hw (template parameter) | Tile height x width | uint32_t  | Any uint32_t number | True     |
+*/
+void noc_async_write_tile(
+    const uint32_t id,
+    const InterleavedAddrGenFast<DRAM, tile_hw>& addrgen,
+    uint32_t src_local_l1_addr,
+    uint8_t noc = noc_index)
+
+// Header: tt_metal/hw/inc/dataflow_api.h
+*/
+// clang-format on
+void noc_async_write_tile(
+    const uint32_t id, const TensorAccessor<DSpec>& addrgen, uint32_t src_local_l1_addr, uint8_t noc = noc_index)
 
 // Function: pack_tile
 // Header: tt_metal/include/compute_kernel_api/pack.h
@@ -200,32 +272,15 @@ ALWI void mul_unary_tile(uint32_t idst, uint32_t param1)
 // clang-format on
 ALWI void pack_tile(uint32_t ifrom_dst, uint32_t icb, std::uint32_t output_tile_index = 0)
 
-// Function: rsub_unary_tile
-// Header: tt_metal/include/compute_kernel_api/eltwise_unary/binop_with_scalar.h
-ALWI void rsub_unary_tile(uint32_t idst, uint32_t param1)
-
 // Function: sub_binary_tile
 // Header: tt_metal/include/compute_kernel_api/eltwise_binary_sfpu.h
 ALWI void sub_binary_tile(uint32_t idst0, uint32_t idst1, uint32_t odst)
 
-// Function: sub_tiles
-// Header: tt_metal/include/compute_kernel_api/eltwise_binary.h
-* | in1_tile_index | The index of tile B within the second CB                 | uint32_t | Must be less than the size of the CB           | True     |
-* | dst_tile_index | The index of the tile in DST REG for the result C        | uint32_t | Must be less than the acquired size of DST REG | True     |
+// Function: sub_binary_tile_init
+// Header: tt_metal/include/compute_kernel_api/eltwise_binary_sfpu.h
+* Please refer to documentation for any_init.
 */
-// clang-format on
-ALWI void sub_tiles(uint32_t icb0, uint32_t icb1, uint32_t itile0, uint32_t itile1, uint32_t idst)
-
-// Function: sub_unary_tile
-// Header: tt_metal/include/compute_kernel_api/eltwise_unary/binop_with_scalar.h
-ALWI void sub_unary_tile(uint32_t idst, uint32_t param1)
-
-// Function: sub_unary_tile_int32
-// Header: tt_metal/include/compute_kernel_api/eltwise_unary/binop_with_scalar.h
-* | param1          | int32 value scalar encoded as uint32                                       | uint32_t | Must be less than the size of the DST register buffer | True     |
-*/
-// clang-format on
-ALWI void sub_unary_tile_int32(uint32_t idst, uint32_t param1)
+ALWI void sub_binary_tile_init()
 
 // Function: tile_regs_acquire
 // Header: tt_metal/include/compute_kernel_api/reg_api.h

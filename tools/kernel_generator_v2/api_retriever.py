@@ -137,11 +137,19 @@ def find_function_signature(func_name: str, header_dirs: List[Path]) -> Optional
 
     results = []
 
-    for header_dir in header_dirs:
-        if not header_dir.exists():
+    for header_path in header_dirs:
+        if not header_path.exists():
             continue
 
-        for header_file in header_dir.rglob("*.h"):
+        # Handle both file paths and directory paths
+        if header_path.is_file():
+            # If it's a file, process it directly
+            header_files = [header_path] if header_path.suffix == ".h" else []
+        else:
+            # If it's a directory, search for all .h files
+            header_files = list(header_path.rglob("*.h"))
+
+        for header_file in header_files:
             try:
                 content = header_file.read_text(encoding="utf-8", errors="ignore")
 
@@ -197,9 +205,10 @@ def retrieve_api_signatures(
     formula: str = "",
     math_steps: str = "",
     header_dirs: List[Path] = None,
+    required_compute_functions: List[str] = None,
 ) -> Dict[str, str]:
     """
-    Main function: Retrieve API signatures from both examples and operation requirements.
+    Main function: Retrieve API signatures for required compute functions + infrastructure APIs.
 
     Args:
         retrieved_examples: List of example documents with 'chunk' field containing code
@@ -207,6 +216,7 @@ def retrieve_api_signatures(
         formula: Mathematical formula
         math_steps: Step-by-step mathematical operations
         header_dirs: Directories containing API headers
+        required_compute_functions: Explicit list of compute functions needed (e.g., ["exp_tile", "div_binary_tile"])
 
     Returns:
         Dict mapping function_name -> signature_with_context
@@ -216,19 +226,56 @@ def retrieve_api_signatures(
 
         header_dirs = API_HEADER_DIRS
 
-    # Stage 1: Extract APIs from retrieved examples
-    api_calls_from_examples = set()
-    for doc in retrieved_examples:
-        code = doc.get("chunk", "")
-        api_calls_from_examples.update(extract_api_calls_from_code(code))
+    # Define core infrastructure APIs that are ALWAYS needed
+    infrastructure_apis = {
+        # Circular buffer operations
+        "cb_wait_front",
+        "cb_reserve_back",
+        "cb_push_back",
+        "cb_pop_front",
+        # Register management
+        "tile_regs_acquire",
+        "tile_regs_commit",
+        "tile_regs_wait",
+        "tile_regs_release",
+        # Tile movement
+        "copy_tile",
+        "pack_tile",
+        # SFPU initialization
+        "init_sfpu",
+        # Dataflow (NOC) operations
+        "noc_async_read_tile",
+        "noc_async_read_barrier",
+        "noc_async_write_tile",
+        "noc_async_write_barrier",
+        "get_read_ptr",
+        "get_write_ptr",
+        "get_tile_size",
+        # Compile-time args
+        "get_compile_time_arg_val",
+    }
 
-    # Stage 2: Map operation requirements to APIs
-    api_calls_from_prompt = map_operations_to_apis(operation_description, formula, math_steps)
+    # Start with infrastructure APIs
+    all_api_calls = infrastructure_apis.copy()
 
-    # Combine both sets
-    all_api_calls = api_calls_from_examples | api_calls_from_prompt
+    # Add explicitly required compute functions if provided
+    if required_compute_functions:
+        for func in required_compute_functions:
+            all_api_calls.add(func)
+            # Also add the _init variant if it exists
+            if not func.endswith("_init"):
+                all_api_calls.add(f"{func}_init")
+    else:
+        # Fallback: extract from examples + map from operation description
+        api_calls_from_examples = set()
+        for doc in retrieved_examples:
+            code = doc.get("chunk", "")
+            api_calls_from_examples.update(extract_api_calls_from_code(code))
 
-    # Stage 3: Retrieve signatures from headers
+        api_calls_from_prompt = map_operations_to_apis(operation_description, formula, math_steps)
+        all_api_calls.update(api_calls_from_examples | api_calls_from_prompt)
+
+    # Retrieve signatures from headers
     signatures = {}
     for func_name in sorted(all_api_calls):
         sig = find_function_signature(func_name, header_dirs)

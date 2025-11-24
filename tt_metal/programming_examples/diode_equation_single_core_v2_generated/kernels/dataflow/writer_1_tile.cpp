@@ -1,4 +1,4 @@
-// WRITER KERNEL
+// WRITER KERNEL: writer_1_tile.cpp
 #include "dataflow_api.h"
 
 #include <cstdint>
@@ -8,13 +8,13 @@ void kernel_main() {
     const uint32_t output_buffer_addr = get_arg_val<uint32_t>(0);
 
     // Compile time args
-    constexpr uint32_t result_cb_index = get_compile_time_arg_val(0);
+    constexpr uint32_t result_cb_index = 16;  // CB_16 for output
 
     // Input data config
     const uint32_t output_data_tile_size_bytes = get_tile_size(result_cb_index);
     constexpr auto interleaved_accessor_args = TensorAccessorArgs<1>();
-    const auto interleaved_accessor = TensorAccessor<tensor_accessor::DistributionSpec<1, 1>>(
-        interleaved_accessor_args, output_buffer_addr, output_data_tile_size_bytes);
+    const auto interleaved_accessor =
+        TensorAccessor(interleaved_accessor_args, output_buffer_addr, output_data_tile_size_bytes);
 
     // Constants
     constexpr uint32_t one_tile = 1;

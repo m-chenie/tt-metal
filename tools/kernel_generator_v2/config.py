@@ -6,10 +6,28 @@ TT_METAL_HOME = Path(os.environ.get("TT_METAL_HOME", "/home/m48chen/tt-metal"))
 PROGRAMMING_EXAMPLES_DIR = TT_METAL_HOME / "tt_metal" / "programming_examples"
 TOOLS_DIR = TT_METAL_HOME / "tools" / "kernel_generator_v2"
 INDEX_PATH = TOOLS_DIR / "index.json"
+
 # API headers to index for RAG
 API_HEADER_DIRS = [
     TT_METAL_HOME / "tt_metal" / "include" / "compute_kernel_api",
     TT_METAL_HOME / "tt_metal" / "include" / "tt-metalium",
+    TT_METAL_HOME / "tt_metal" / "hw" / "inc",
+]
+
+# SFPU-specific API headers (for focused retrieval)
+# Includes: SFPU operations, circular buffers, registers, tile movement, dataflow
+SFPU_HEADER_DIRS = [
+    # SFPU compute operations
+    TT_METAL_HOME / "tt_metal" / "include" / "compute_kernel_api" / "eltwise_binary_sfpu.h",
+    TT_METAL_HOME / "tt_metal" / "include" / "compute_kernel_api" / "eltwise_unary",
+    # Circular buffer and register management (compute kernel)
+    TT_METAL_HOME / "tt_metal" / "include" / "compute_kernel_api" / "cb_api.h",
+    TT_METAL_HOME / "tt_metal" / "include" / "compute_kernel_api" / "reg_api.h",
+    TT_METAL_HOME / "tt_metal" / "include" / "compute_kernel_api" / "tile_move_copy.h",
+    TT_METAL_HOME / "tt_metal" / "include" / "compute_kernel_api" / "pack.h",
+    TT_METAL_HOME / "tt_metal" / "include" / "compute_kernel_api" / "common.h",
+    # Dataflow APIs (reader/writer kernels)
+    TT_METAL_HOME / "tt_metal" / "hw" / "inc" / "dataflow_api.h",
 ]
 
 # Model / LLM
@@ -45,6 +63,11 @@ OPERATIONS = {
         "operation_type": "sfpu_chain",
         "formula": "softplus(x) = log(1 + exp(x))",
         "mathematical_steps": "exponentiate input, add 1, take logarithm",
+        "required_compute_functions": [
+            "exp_tile",  # exponentiation
+            "add_binary_tile",  # addition (exp(x) + 1)
+            "log_tile",  # logarithm
+        ],
     },
     "diode_equation": {
         "description": "diode current equation (I = isat × (exp(V/vj) - 1))",
@@ -53,6 +76,12 @@ OPERATIONS = {
         "inputs": ["V", "Vj", "Isat"],
         "formula": "I = isat × (exp(V/vj) - 1)",
         "mathematical_steps": "divide V by vj, exponentiate result, subtract 1, multiply by isat",
+        "required_compute_functions": [
+            "exp_tile",  # exponentiation
+            "div_binary_tile",  # division (V/vj)
+            "mul_binary_tile",  # multiplication (isat * ...)
+            "sub_binary_tile",  # subtraction (... - 1)
+        ],
     },
 }
 
