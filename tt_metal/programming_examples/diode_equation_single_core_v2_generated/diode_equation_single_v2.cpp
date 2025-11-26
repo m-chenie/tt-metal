@@ -9,50 +9,9 @@
 #include <random>
 #include <cstdint>
 #include <vector>
-#include <fmt/core.h>
 
 using namespace tt;
 using namespace tt::tt_metal;
-
-// Diode equation: I = isat × (exp(V/vj) - 1)
-void golden_diode_equation(const std::vector<float>& v, std::vector<float>& i, float isat, float vj) {
-    for (size_t idx = 0; idx < v.size(); ++idx) {
-        i[idx] = isat * (std::exp(v[idx] / vj) - 1.0f);
-    }
-}
-
-float check_bfloat16_vector_pcc(const std::vector<bfloat16>& vec_a, const std::vector<bfloat16>& vec_b) {
-    float x_mean = 0.0f;
-    float y_mean = 0.0f;
-
-    for (size_t i = 0; i < vec_a.size(); i++) {
-        x_mean += static_cast<float>(vec_a[i]);
-        y_mean += static_cast<float>(vec_b[i]);
-    }
-
-    x_mean /= vec_a.size();
-    y_mean /= vec_b.size();
-
-    float covariance = 0.0f;
-    float x_stddev = 0.0f;
-    float y_stddev = 0.0f;
-
-    for (size_t i = 0; i < vec_a.size(); i++) {
-        float x_diff = static_cast<float>(vec_a[i]) - x_mean;
-        float y_diff = static_cast<float>(vec_b[i]) - y_mean;
-
-        covariance += x_diff * y_diff;
-        x_stddev += x_diff * x_diff;
-        y_stddev += y_diff * y_diff;
-    }
-
-    covariance /= vec_a.size();
-    x_stddev /= vec_a.size();
-    y_stddev /= vec_b.size();
-
-    float correlation_coefficient_ = covariance / (std::sqrt(x_stddev) * std::sqrt(y_stddev));
-    return correlation_coefficient_;
-}
 
 int main() {
     // Device setup
@@ -77,14 +36,6 @@ int main() {
         v = bfloat16(dist(rng));
     }
 
-    // Calculate golden function results on CPU
-    std::vector<float> golden_vec_float(src_vec.size());
-    std::vector<float> src_vec_float(src_vec.size());
-    for (size_t i = 0; i < src_vec.size(); ++i) {
-        src_vec_float[i] = static_cast<float>(src_vec[i]);
-    }
-    golden_diode_equation(src_vec_float, golden_vec_float, 1.0f, 0.5f);
-
     // Tilize the input vectors to match the expected tiled layout for the device
     src_vec = tilize_nfaces(src_vec, constants::TILE_WIDTH, constants::TILE_HEIGHT);
 
@@ -95,41 +46,56 @@ int main() {
     distributed::ReplicatedBufferConfig buffer_config{.size = sizeof(bfloat16) * src_vec.size()};
     std::shared_ptr<distributed::MeshBuffer> src_dram_buffer =
         distributed::MeshBuffer::create(buffer_config, dram_config, mesh_device.get());  // Input buffer
-    std::shared_ptr<distributed::MeshBuffer> dst_dram_buffer =
-        distributed::MeshBuffer::create(buffer_config, dram_config, mesh_device.get());  // Output buffer
 
     // DRAM transfer
     distributed::EnqueueWriteMeshBuffer(cq, src_dram_buffer, src_vec, false);
 
     // L1 circular buffer setup
     constexpr uint32_t src_cb_index = CBIndex::c_0;
-    CircularBufferConfig cb_src_config =
-        CircularBufferConfig(single_tile_size, {{src_cb_index, tt::DataFormat::Float16_b}})
-            .set_page_size(src_cb_index, single_tile_size);
-    tt_metal::CreateCircularBuffer(program, core, cb_src_config);
+    CreateCircularBuffer(
+        program,
+        core,
+        CircularBufferConfig(
+            /*total_size=*/single_tile_size,
+            /*data_format_spec=*/{{src_cb_index, tt::DataFormat::Float16_b}})
+            .set_page_size(src_cb_index, single_tile_size));
 
-    constexpr uint32_t isat_cb_index = CBIndex::c_1;
-    CircularBufferConfig cb_isat_config =
-        CircularBufferConfig(single_tile_size, {{isat_cb_index, tt::DataFormat::Float16_b}})
-            .set_page_size(isat_cb_index, single_tile_size);
-    tt_metal::CreateCircularBuffer(program, core, cb_isat_config);
+    constexpr uint32_t constants_cb_index = CBIndex::c_1;
+    CreateCircularBuffer(
+        program,
+        core,
+        CircularBufferConfig(
+            /*total_size=*/3 * single_tile_size,
+            /*data_format_spec=*/{{constants_cb_index, tt::DataFormat::Float16_b}})
+            .set_page_size(constants_cb_index, single_tile_size));
 
-    constexpr uint32_t result_cb_index = CBIndex::c_16;
-    CircularBufferConfig cb_result_config =
-        CircularBufferConfig(single_tile_size, {{result_cb_index, tt::DataFormat::Float16_b}})
-            .set_page_size(result_cb_index, single_tile_size);
-    tt_metal::CreateCircularBuffer(program, core, cb_result_config);
+    constexpr uint32_t result_cb_index = CBIndex::c_2;
+    CreateCircularBuffer(
+        program,
+        core,
+        CircularBufferConfig(
+            /*total_size=*/single_tile_size,
+            /*data_format_spec=*/{{result_cb_index, tt::DataFormat::Float16_b}})
+            .set_page_size(result_cb_index, single_tile_size));
 
     // Kernels setup
-    // Data movement kernels
-    std::vector<uint32_t> reader_compile_time_args = {src_cb_index, isat_cb_index};
+    std::vector<uint32_t> reader_compile_time_args = {src_cb_index, constants_cb_index};
     TensorAccessorArgs(*src_dram_buffer).append_to(reader_compile_time_args);
     KernelHandle reader_kernel_id = CreateKernel(
         program,
         "diode_equation/kernels/dataflow/reader.cpp",
         core,
         tt::tt_metal::ReaderDataMovementConfig{reader_compile_time_args});
+
+    std::vector<uint32_t> compute_compile_time_args = {src_cb_index, constants_cb_index, result_cb_index};
+    KernelHandle compute_kernel_id = CreateKernel(
+        program,
+        "diode_equation/kernels/compute/compute.cpp",
+        core,
+        tt::tt_metal::ComputeConfig{.compile_args = compute_compile_time_args});
+
     std::vector<uint32_t> writer_compile_time_args = {result_cb_index};
+    auto dst_dram_buffer = distributed::MeshBuffer::create(buffer_config, dram_config, mesh_device.get());
     TensorAccessorArgs(*dst_dram_buffer).append_to(writer_compile_time_args);
     KernelHandle writer_kernel_id = CreateKernel(
         program,
@@ -137,16 +103,9 @@ int main() {
         core,
         tt::tt_metal::WriterDataMovementConfig{writer_compile_time_args});
 
-    // Compute kernel
-    std::vector<uint32_t> compute_compile_time_args = {src_cb_index, isat_cb_index, result_cb_index};
-    CreateKernel(
-        program,
-        "diode_equation/kernels/compute/compute.cpp",
-        core,
-        tt::tt_metal::ComputeConfig{.compile_args = compute_compile_time_args});
-
     // Runtime args setup
     SetRuntimeArgs(program, reader_kernel_id, core, {src_dram_buffer->address()});
+    SetRuntimeArgs(program, compute_kernel_id, core, {});
     SetRuntimeArgs(program, writer_kernel_id, core, {dst_dram_buffer->address()});
 
     // Program enqueue
@@ -155,18 +114,41 @@ int main() {
     distributed::Finish(cq);
 
     // Data transfer back to host machine
-    std::vector<bfloat16> result_vec(src_vec.size(), 0);
+    std::vector<bfloat16> result_vec(constants::TILE_HW, 0);
     distributed::EnqueueReadMeshBuffer(cq, result_vec, dst_dram_buffer, true);
 
     // Reverse the tilization to get the result in the row-major format that the CPU expects
     result_vec = untilize_nfaces(result_vec, constants::TILE_WIDTH, constants::TILE_HEIGHT);
 
-    // Calculate the Pearson correlation coefficient (PCC) between the golden vector and the result vector
-    std::vector<bfloat16> golden_vec(result_vec.size());
-    for (size_t i = 0; i < result_vec.size(); ++i) {
-        golden_vec[i] = bfloat16(golden_vec_float[i]);
+    // Calculate the golden function results on CPU
+    std::vector<bfloat16> golden_vec(constants::TILE_HW, 0);
+    for (size_t i = 0; i < src_vec.size(); ++i) {
+        float v = static_cast<float>(src_vec[i]);
+        float isat = 1.0f;
+        float vj = 1.0f;
+        golden_vec[i] = bfloat16(isat * (std::exp(v / vj) - 1));
     }
-    const float pearson = check_bfloat16_vector_pcc(golden_vec, result_vec);
+
+    // Calculate the Pearson correlation coefficient (PCC) between the golden vector and the result vector
+    float pearson = 0.0f;
+    float x_mean = 0.0f;
+    float y_mean = 0.0f;
+    float covariance = 0.0f;
+    float x_stddev = 0.0f;
+    float y_stddev = 0.0f;
+    for (size_t i = 0; i < src_vec.size(); i++) {
+        float x_diff = static_cast<float>(golden_vec[i]) - x_mean;
+        float y_diff = static_cast<float>(result_vec[i]) - y_mean;
+
+        covariance += x_diff * y_diff;
+        x_stddev += x_diff * x_diff;
+        y_stddev += y_diff * y_diff;
+    }
+    covariance /= src_vec.size();
+    x_stddev /= src_vec.size();
+    y_stddev /= src_vec.size();
+
+    pearson = covariance / (std::sqrt(x_stddev) * std::sqrt(y_stddev));
     fmt::print("Metalium vs Golden -- PCC = {}\n", pearson);
     TT_FATAL(pearson > 0.999, "PCC not high enough. Result PCC: {}, Expected PCC: 0.999", pearson);
 

@@ -77,15 +77,13 @@ OPERATIONS = {
         "variable_inputs": ["V"],  # Read from DRAM
         "constant_inputs": {  # Initialize in reader kernel using float_to_bfloat16
             "Vj": 1.0,
-            "Isat": 1.0,
+            "Isat": 0.026,
             "ones": 1.0,  # For subtraction (... - 1)
         },
         "circular_buffers": {
-            "CB_0": "V (variable input from DRAM)",
-            "CB_1": "Vj (constant, initialized in reader)",
-            "CB_2": "Isat (constant, initialized in reader)",
-            "CB_3": "1.0 (constant, initialized in reader)",
-            "CB_16": "output result",
+            "CB_0": {"description": "V (variable input from DRAM)", "num_tiles": 1},
+            "CB_1": {"description": "constants (Vj at tile 0, Isat at tile 1, ones at tile 2)", "num_tiles": 3},
+            "CB_2": {"description": "output result", "num_tiles": 1},
         },
         "formula": "I = isat × (exp(V/vj) - 1)",
         "mathematical_steps": "divide V by vj, exponentiate result, subtract 1, multiply by isat",

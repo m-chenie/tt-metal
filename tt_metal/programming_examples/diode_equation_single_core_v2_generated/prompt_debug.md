@@ -16,9 +16,23 @@ CRITICAL CONSTRAINTS FOR SFPU OPERATIONS:
 
 - ALL computation MUST use SFPU operations (element-wise on DST registers)
 
-- DO NOT create DRAM buffers for scalar constants - initialize them directly in circular buffers
+- DO NOT create DRAM buffers for scalar constants - initialize them directly in circular buffer in the reader kernel
 
 - Follow the sfpu_eltwise_chain pattern for constant initialization in reader kernel
+
+
+
+CIRCULAR BUFFER TILE SEMANTICS:
+
+- Each tile in a circular buffer is TILE_HW elements (typically 1024 for 32x32)
+
+- If a CB has N tiles, write N * TILE_HW elements total (N complete tiles)
+
+- Example: CB with 3 tiles = write elements [0..TILE_HW-1] for tile 0, [TILE_HW..2*TILE_HW-1] for tile 1, [2*TILE_HW..3*TILE_HW-1] for tile 2
+
+- In compute kernel: copy_tile(cb_id, tile_index, dst_reg) where tile_index selects which of the N tiles
+
+- When cb_wait_front(cb_id, N) and cb_pop_front(cb_id, N), the N must match the number of tiles you're actually using
 
 
 
@@ -30,23 +44,19 @@ INPUT CONFIGURATION:
 
   * Vj = 1.0
 
-  * Isat = 1.0
+  * Isat = 0.026
 
   * ones = 1.0
 
 
 
-CIRCULAR BUFFER LAYOUT:
+CIRCULAR BUFFER LAYOUT (create all CB in host code):
 
-- CB_0: V (variable input from DRAM)
+- CB_0: {'description': 'V (variable input from DRAM)', 'num_tiles': 1}
 
-- CB_1: Vj (constant, initialized in reader)
+- CB_1: {'description': 'constants (Vj at tile 0, Isat at tile 1, ones at tile 2)', 'num_tiles': 3}
 
-- CB_2: Isat (constant, initialized in reader)
-
-- CB_3: 1.0 (constant, initialized in reader)
-
-- CB_16: output result
+- CB_2: {'description': 'output result', 'num_tiles': 1}
 
 
 
@@ -549,13 +559,12 @@ Requirements:
 - Emit exactly three separate code blocks in your response
 - Label each block clearly: COMPUTE, READER, WRITER
 - Circular buffer layout (MUST follow exactly):
-  * CB_0: V (variable input from DRAM)
-  * CB_1: Vj (constant, initialized in reader)
-  * CB_2: Isat (constant, initialized in reader)
-  * CB_3: 1.0 (constant, initialized in reader)
-  * CB_16: output result
-- Compute kernel: Implement the formula: I = isat × (exp(V/vj) - 1). Mathematical steps: divide V by vj, exponentiate result, subtract 1, multiply by isat. DO NOT initialize constants in compute kernel.. Use appropriate SFPU operations from the examples. Follow the pattern: initialize operations, wait for inputs, acquire registers, perform computation, pack result, release registers
-- Reader kernel: Read V from DRAM into CB_0. Initialize constant tiles in reader kernel using float_to_bfloat16 pattern:   * Vj = 1.0 (in appropriate CB as specified above)   * Isat = 1.0 (in appropriate CB as specified above)   * ones = 1.0 (in appropriate CB as specified above). Use noc_async_read with barriers
+  * CB_0: V (variable input from DRAM) [1 tile(s)]
+  * CB_1: constants (Vj at tile 0, Isat at tile 1, ones at tile 2) [3 tile(s)]
+  * CB_2: output result [1 tile(s)]
+- Compute kernel: Implement the formula: I = isat × (exp(V/vj) - 1). Mathematical steps: divide V by vj, exponentiate result, subtract 1, multiply by isat. DO NOT initialize constants in compute kernel. REMINDER: cb_wait_front/cb_pop_front count must match the number of tiles in the CB (e.g., if CB has 3 tiles, use cb_wait_front(cb_id, 3) and cb_pop_front(cb_id, 3)). Use appropriate SFPU operations from the examples. Follow the pattern: initialize operations, wait for inputs, acquire registers, perform computation, pack result, release registers
+- Reader kernel: Read V from DRAM into CB_0. Initialize constant tiles in reader kernel using float_to_bfloat16 pattern:   * Vj = 1.0 (in appropriate CB as specified above)   * Isat = 0.026 (in appropriate CB as specified above)   * ones = 1.0 (in appropriate CB as specified above)
+REMINDER: When writing N tiles to a CB:   - Each tile is TILE_HW elements (1024 for 32x32)   - Write tile 0 at ptr[0..TILE_HW-1], tile 1 at ptr[TILE_HW..2*TILE_HW-1], etc.   - Call cb_reserve_back(cb_id, N) and cb_push_back(cb_id, N) to reserve/push N tiles. Use noc_async_read with barriers
 - Writer kernel: Write output tiles from CB_16 to DRAM using noc_async_write with barriers
 - Study the provided examples to identify the correct API functions and usage patterns
 - Follow TT-Metal conventions: cb_wait/reserve/push/pop discipline, NOC barriers, proper includes
@@ -1080,7 +1089,13 @@ Requirements:
 - Use correct headers: `#include <tt-metalium/host_api.hpp>` with angle brackets
 - Use `distributed::MeshDevice::create_unit_mesh()` for device setup
 - Create DRAM buffers using `distributed::MeshBuffer::create()`
-- Configure CB_0, CB_1 for inputs, CB_16 for output.
+- CRITICAL: Allocate ALL circular buffers in host code using CreateCircularBuffer():
+  * CB_0: size=single_tile_size bytes, format=Float16_b
+  * CB_1: size=3 * single_tile_size bytes, format=Float16_b
+  * CB_2: size=single_tile_size bytes, format=Float16_b
+- DO NOT create DRAM buffers for constants or initialize constant data in host code
+- Constants will be initialized directly in L1 by the reader kernel
+- ONLY create DRAM buffer for variable input: V
 - Compile and launch the three kernels (reader, compute, writer) with SetRuntimeArgs
 - Enqueue program using `distributed::EnqueueMeshWorkload()`
 - Add CPU golden validation with PCC check

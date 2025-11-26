@@ -21,8 +21,23 @@ def build_system_prompt(op: str, core_mode: str, retrieved: List[Dict]) -> str:
     if op_type == "sfpu_chain":
         parts.append("CRITICAL CONSTRAINTS FOR SFPU OPERATIONS:")
         parts.append("- ALL computation MUST use SFPU operations (element-wise on DST registers)")
-        parts.append("- DO NOT create DRAM buffers for scalar constants - initialize them directly in circular buffers")
+        parts.append(
+            "- DO NOT create DRAM buffers for scalar constants - initialize them directly in circular buffer in the reader kernel"
+        )
         parts.append("- Follow the sfpu_eltwise_chain pattern for constant initialization in reader kernel")
+        parts.append("")
+        parts.append("CIRCULAR BUFFER TILE SEMANTICS:")
+        parts.append("- Each tile in a circular buffer is TILE_HW elements (typically 1024 for 32x32)")
+        parts.append("- If a CB has N tiles, write N * TILE_HW elements total (N complete tiles)")
+        parts.append(
+            "- Example: CB with 3 tiles = write elements [0..TILE_HW-1] for tile 0, [TILE_HW..2*TILE_HW-1] for tile 1, [2*TILE_HW..3*TILE_HW-1] for tile 2"
+        )
+        parts.append(
+            "- In compute kernel: copy_tile(cb_id, tile_index, dst_reg) where tile_index selects which of the N tiles"
+        )
+        parts.append(
+            "- When cb_wait_front(cb_id, N) and cb_pop_front(cb_id, N), the N must match the number of tiles you're actually using"
+        )
 
         # Add explicit input/constant specification if available
         variable_inputs = op_cfg.get("variable_inputs", [])
@@ -43,7 +58,7 @@ def build_system_prompt(op: str, core_mode: str, retrieved: List[Dict]) -> str:
 
             if cb_layout:
                 parts.append("")
-                parts.append("CIRCULAR BUFFER LAYOUT:")
+                parts.append("CIRCULAR BUFFER LAYOUT (create all CB in host code):")
                 for cb_id, cb_desc in cb_layout.items():
                     parts.append(f"- {cb_id}: {cb_desc}")
 
@@ -138,26 +153,35 @@ def build_kernel_user_prompt(op: str, core_mode: str) -> str:
         # Build circular buffer description from config
         if cb_layout:
             cb_lines = ["Circular buffer layout (MUST follow exactly):"]
-            for cb_id, cb_desc_text in cb_layout.items():
-                cb_lines.append(f"  * {cb_id}: {cb_desc_text}")
+            for cb_id, cb_info in cb_layout.items():
+                if isinstance(cb_info, dict):
+                    desc = cb_info.get("description", "")
+                    num_tiles = cb_info.get("num_tiles", 1)
+                    cb_lines.append(f"  * {cb_id}: {desc} [{num_tiles} tile(s)]")
+                else:
+                    cb_lines.append(f"  * {cb_id}: {cb_info}")
             cb_desc = "\n".join(cb_lines)
         else:
             cb_desc = "Use standard circular buffer layout: CB_0/CB_1 for inputs, CB_16 for output"
 
-        # Build reader description
+        # Build reader description with explicit tile semantics
         if variable_inputs and constant_inputs:
             reader_parts = [f"Read {variable_inputs[0]} from DRAM into CB_0."]
             reader_parts.append(f"Initialize constant tiles in reader kernel using float_to_bfloat16 pattern:")
             for const_name, const_val in constant_inputs.items():
                 reader_parts.append(f"  * {const_name} = {const_val} (in appropriate CB as specified above)")
+            reader_parts.append("\nREMINDER: When writing N tiles to a CB:")
+            reader_parts.append("  - Each tile is TILE_HW elements (1024 for 32x32)")
+            reader_parts.append("  - Write tile 0 at ptr[0..TILE_HW-1], tile 1 at ptr[TILE_HW..2*TILE_HW-1], etc.")
+            reader_parts.append("  - Call cb_reserve_back(cb_id, N) and cb_push_back(cb_id, N) to reserve/push N tiles")
             reader_desc = " ".join(reader_parts)
         else:
             reader_desc = "Read input tiles from DRAM using NOC async operations"
 
-        compute_desc = f"Implement the formula: {formula}. Mathematical steps: {math_steps}. DO NOT initialize constants in compute kernel."
+        compute_desc = f"Implement the formula: {formula}. Mathematical steps: {math_steps}. DO NOT initialize constants in compute kernel. REMINDER: cb_wait_front/cb_pop_front count must match the number of tiles in the CB (e.g., if CB has 3 tiles, use cb_wait_front(cb_id, 3) and cb_pop_front(cb_id, 3))."
 
         requirements = f"""- {cb_desc}
-- Compute kernel: {compute_desc}. Use appropriate SFPU operations from the examples. Follow the pattern: initialize operations, wait for inputs, acquire registers, perform computation, pack result, release registers
+- Compute kernel: {compute_desc} Use appropriate SFPU operations from the examples. Follow the pattern: initialize operations, wait for inputs, acquire registers, perform computation, pack result, release registers
 - Reader kernel: {reader_desc}. Use noc_async_read with barriers
 - Writer kernel: Write output tiles from CB_16 to DRAM using noc_async_write with barriers"""
     else:
@@ -254,19 +278,30 @@ def build_host_system_prompt(op: str, core_mode: str, host_examples: List[Dict])
 def build_host_user_prompt(op: str, core_mode: str) -> str:
     op_desc = OPERATIONS[op]["description"]
     op_type = OPERATIONS[op].get("operation_type", "binary")
+    op_cfg = OPERATIONS[op]
 
     # Build CB configuration hint based on operation type
+    cb_requirements = ""
     if op_type == "sfpu_chain":
-        op_cfg = OPERATIONS[op]
+        cb_layout = op_cfg.get("circular_buffers", {})
+        variable_inputs = op_cfg.get("variable_inputs", [])
+        constant_inputs = op_cfg.get("constant_inputs", {})
+
+        if cb_layout:
+            cb_req_lines = ["- CRITICAL: Allocate ALL circular buffers in host code using CreateCircularBuffer():"]
+            for cb_id, cb_info in cb_layout.items():
+                if isinstance(cb_info, dict):
+                    desc = cb_info.get("description", "")
+                    num_tiles = cb_info.get("num_tiles", 1)
+                    size_expr = f"{num_tiles} * single_tile_size" if num_tiles > 1 else "single_tile_size"
+                    cb_req_lines.append(f"  * {cb_id}: size={size_expr} bytes, format=Float16_b")
+            cb_req_lines.append("- DO NOT create DRAM buffers for constants or initialize constant data in host code")
+            cb_req_lines.append("- Constants will be initialized directly in L1 by the reader kernel")
+            if variable_inputs:
+                cb_req_lines.append(f"- ONLY create DRAM buffer for variable input: {', '.join(variable_inputs)}")
+            cb_requirements = "\n".join(cb_req_lines) + "\n"
         inputs = op_cfg.get("inputs", [])
         constants = op_cfg.get("constants", [])
-
-        if inputs and constants:
-            cb_hint = f"Configure CB_0 ({inputs[0]}), CB_1 ({inputs[1]}), CB_2 ({constants[0]} constant), CB_16 (output). Initialize CB_2 with the constant {constants[0]} value."
-        else:
-            cb_hint = "Configure CB_0, CB_1 for inputs, CB_16 for output."
-    else:
-        cb_hint = "Configure circular buffers: CB_0, CB_1 for inputs; CB_16 for output."
 
     return f"""Generate complete host code (.cpp file) AND CMakeLists.txt for {op_desc} ({core_mode}-core).
 
@@ -274,8 +309,7 @@ Requirements:
 - Use correct headers: `#include <tt-metalium/host_api.hpp>` with angle brackets
 - Use `distributed::MeshDevice::create_unit_mesh()` for device setup
 - Create DRAM buffers using `distributed::MeshBuffer::create()`
-- {cb_hint}
-- Compile and launch the three kernels (reader, compute, writer) with SetRuntimeArgs
+{cb_requirements}- Compile and launch the three kernels (reader, compute, writer) with SetRuntimeArgs
 - Enqueue program using `distributed::EnqueueMeshWorkload()`
 - Add CPU golden validation with PCC check
 - Use proper tilize/untilize for data conversion

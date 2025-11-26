@@ -8,7 +8,7 @@ void kernel_main() {
     const uint32_t output_buffer_addr = get_arg_val<uint32_t>(0);
 
     // Compile time args
-    constexpr uint32_t result_cb_index = 16;
+    constexpr uint32_t result_cb_index = get_compile_time_arg_val(0);
 
     // Input data config
     const uint32_t output_data_tile_size_bytes = get_tile_size(result_cb_index);
