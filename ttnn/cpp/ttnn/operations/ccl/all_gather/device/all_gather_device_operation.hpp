@@ -14,8 +14,8 @@
 #include "ttnn/types.hpp"
 #include "ttnn/decorators.hpp"
 #include <tt-metalium/sub_device.hpp>
-#include <tt-metalium/fabric_edm_types.hpp>
-#include "ttnn/operations/experimental/ccl/all_gather_async/device/all_gather_async_op.hpp"
+#include <tt-metalium/experimental/fabric/fabric_edm_types.hpp>
+#include "ttnn/operations/experimental/ccl/all_gather_async/device/all_gather_async_device_operation.hpp"
 
 namespace ttnn::operations::ccl {
 
@@ -30,6 +30,7 @@ struct AllGatherDeviceOperation {
         const std::optional<tt::tt_metal::SubDeviceId> subdevice_id;
         const tt::tt_fabric::Topology topology;
         const uint32_t num_links;
+        const std::optional<CoreRangeSet> sub_core_grid;
     };
 
     struct tensor_args_t {
@@ -45,7 +46,7 @@ struct AllGatherDeviceOperation {
         struct shared_variables_t {
             std::vector<tt::tt_metal::GlobalSemaphore> multidevice_semaphores;
             tt::tt_metal::GlobalSemaphore barrier_semaphore;
-            ttnn::operations::ccl::AllGatherProgramArtifacts program_artifacts;
+            AllGatherProgramArtifacts program_artifacts;
         };
         using cached_mesh_workload_t = ttnn::device_operation::AdaptedCachedMeshWorkload<shared_variables_t>;
 
@@ -91,7 +92,8 @@ struct AllGatherDeviceOperation {
         const ttnn::MemoryConfig& memory_config,
         const std::optional<ttnn::Tensor>& optional_output_tensor,
         uint32_t num_links,
-        tt::tt_fabric::Topology topology);
+        tt::tt_fabric::Topology topology,
+        const std::optional<CoreRangeSet>& sub_core_grid);
 };
 
 }  // namespace ttnn::operations::ccl
