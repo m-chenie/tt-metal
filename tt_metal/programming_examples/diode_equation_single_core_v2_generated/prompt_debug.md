@@ -38,13 +38,9 @@ CIRCULAR BUFFER TILE SEMANTICS:
 
 INPUT CONFIGURATION:
 
-- Variable inputs (from DRAM): V
+- Variable inputs (from DRAM): V, Vj, Isat
 
 - Constant inputs (initialize in reader kernel using float_to_bfloat16):
-
-  * Vj = 1.0
-
-  * Isat = 0.026
 
   * ones = 1.0
 
@@ -54,9 +50,9 @@ CIRCULAR BUFFER LAYOUT (create all CB in host code):
 
 - CB_0: V (variable input from DRAM) [1 tile(s)]
 
-- CB_1: Vj (constant = 1.0, initialized in reader kernel) [1 tile(s)]
+- CB_1: Vj (variable input from DRAM) [1 tile(s)]
 
-- CB_2: Isat (constant = 0.026, initialized in reader kernel) [1 tile(s)]
+- CB_2: Isat (variable input from DRAM) [1 tile(s)]
 
 - CB_3: ones (constant = 1.0, initialized in reader kernel) [1 tile(s)]
 
@@ -562,16 +558,10 @@ Generate TT-Metal kernels for diode current equation (I = isat × (exp(V/vj) - 1
 Requirements:
 - Emit exactly three separate code blocks in your response
 - Label each block clearly: COMPUTE, READER, WRITER
-- Circular buffer layout (MUST follow exactly):
-  * CB_0: V (variable input from DRAM) [1 tile(s)]
-  * CB_1: Vj (constant = 1.0, initialized in reader kernel) [1 tile(s)]
-  * CB_2: Isat (constant = 0.026, initialized in reader kernel) [1 tile(s)]
-  * CB_3: ones (constant = 1.0, initialized in reader kernel) [1 tile(s)]
-  * CB_4: output result [1 tile(s)]
-- Compute kernel: Implement the formula: I = isat × (exp(V/vj) - 1). Mathematical steps: divide V by vj, exponentiate result, subtract 1, multiply by isat. DO NOT initialize constants in compute kernel. REMINDER: cb_wait_front/cb_pop_front count must match the number of tiles in the CB (e.g., if CB has 3 tiles, use cb_wait_front(cb_id, 3) and cb_pop_front(cb_id, 3)). Use appropriate SFPU operations from the examples. Follow the pattern: initialize operations, wait for inputs, acquire registers, perform computation, pack result, release registers
-- Reader kernel: Read V from DRAM into CB_0. Initialize constant tiles in reader kernel using float_to_bfloat16 pattern:   * Vj = 1.0 (in appropriate CB as specified above)   * Isat = 0.026 (in appropriate CB as specified above)   * ones = 1.0 (in appropriate CB as specified above)
-REMINDER: When writing N tiles to a CB:   - Each tile is TILE_HW elements (1024 for 32x32)   - Write tile 0 at ptr[0..TILE_HW-1], tile 1 at ptr[TILE_HW..2*TILE_HW-1], etc.   - Call cb_reserve_back(cb_id, N) and cb_push_back(cb_id, N) to reserve/push N tiles. Use noc_async_read with barriers
-- Writer kernel: Write output tiles from CB_16 to DRAM using noc_async_write with barriers
+- Create 5 circular buffers following the example patterns
+- Compute kernel: Implement the formula: I = isat × (exp(V/vj) - 1). Mathematical steps: divide V by vj, exponentiate result, subtract 1, multiply by isat. Use appropriate SFPU operations from the examples. Follow the pattern from examples: initialize operations, wait for inputs, acquire registers, perform computation, pack result, release registers
+- Reader kernel: Read variable inputs from DRAM and initialize constant inputs in circular buffers following the example pattern. Use noc_async_read with barriers
+- Writer kernel: Write output tiles to DRAM following the example pattern. Use noc_async_write with barriers
 - Study the provided examples to identify the correct API functions and usage patterns
 - Follow TT-Metal conventions: cb_wait/reserve/push/pop discipline, NOC barriers, proper includes
 
@@ -1103,7 +1093,7 @@ Requirements:
   * CB_4: size=single_tile_size bytes, format=Float16_b
 - DO NOT create DRAM buffers for constants or initialize constant data in host code
 - Constants will be initialized directly in L1 by the reader kernel
-- ONLY create DRAM buffer for variable input: V
+- ONLY create DRAM buffer for variable input: V, Vj, Isat
 - Compile and launch the three kernels (reader, compute, writer) with SetRuntimeArgs
 - Enqueue program using `distributed::EnqueueMeshWorkload()`
 - Add CPU golden validation with PCC check

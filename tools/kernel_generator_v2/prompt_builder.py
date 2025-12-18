@@ -153,37 +153,16 @@ def build_kernel_user_prompt(op: str, core_mode: str) -> str:
         variable_inputs = op_cfg.get("variable_inputs", [])
         constant_inputs = op_cfg.get("constant_inputs", {})
 
-        # Generate circular buffer layout dynamically
+        # Count total number of circular buffers needed
         cb_layout = generate_circular_buffer_layout(op_cfg)
+        num_cbs = len(cb_layout)
 
-        # Build circular buffer description from dynamically generated layout
-        cb_lines = ["Circular buffer layout (MUST follow exactly):"]
-        for cb_id, cb_info in cb_layout.items():
-            desc = cb_info.get("description", "")
-            num_tiles = cb_info.get("num_tiles", 1)
-            cb_lines.append(f"  * {cb_id}: {desc} [{num_tiles} tile(s)]")
-        cb_desc = "\n".join(cb_lines)
+        compute_desc = f"Implement the formula: {formula}. Mathematical steps: {math_steps}."
 
-        # Build reader description with explicit tile semantics
-        if variable_inputs and constant_inputs:
-            reader_parts = [f"Read {variable_inputs[0]} from DRAM into CB_0."]
-            reader_parts.append(f"Initialize constant tiles in reader kernel using float_to_bfloat16 pattern:")
-            for const_name, const_val in constant_inputs.items():
-                reader_parts.append(f"  * {const_name} = {const_val} (in appropriate CB as specified above)")
-            reader_parts.append("\nREMINDER: When writing N tiles to a CB:")
-            reader_parts.append("  - Each tile is TILE_HW elements (1024 for 32x32)")
-            reader_parts.append("  - Write tile 0 at ptr[0..TILE_HW-1], tile 1 at ptr[TILE_HW..2*TILE_HW-1], etc.")
-            reader_parts.append("  - Call cb_reserve_back(cb_id, N) and cb_push_back(cb_id, N) to reserve/push N tiles")
-            reader_desc = " ".join(reader_parts)
-        else:
-            reader_desc = "Read input tiles from DRAM using NOC async operations"
-
-        compute_desc = f"Implement the formula: {formula}. Mathematical steps: {math_steps}. DO NOT initialize constants in compute kernel. REMINDER: cb_wait_front/cb_pop_front count must match the number of tiles in the CB (e.g., if CB has 3 tiles, use cb_wait_front(cb_id, 3) and cb_pop_front(cb_id, 3))."
-
-        requirements = f"""- {cb_desc}
-- Compute kernel: {compute_desc} Use appropriate SFPU operations from the examples. Follow the pattern: initialize operations, wait for inputs, acquire registers, perform computation, pack result, release registers
-- Reader kernel: {reader_desc}. Use noc_async_read with barriers
-- Writer kernel: Write output tiles from CB_16 to DRAM using noc_async_write with barriers"""
+        requirements = f"""- Create {num_cbs} circular buffers following the example patterns
+- Compute kernel: {compute_desc} Use appropriate SFPU operations from the examples. Follow the pattern from examples: initialize operations, wait for inputs, acquire registers, perform computation, pack result, release registers
+- Reader kernel: Read variable inputs from DRAM and initialize constant inputs in circular buffers following the example pattern. Use noc_async_read with barriers
+- Writer kernel: Write output tiles to DRAM following the example pattern. Use noc_async_write with barriers"""
     else:
         # Binary operations
         requirements = """- Use circular buffers: CB_0 and CB_1 for inputs, CB_16 for output

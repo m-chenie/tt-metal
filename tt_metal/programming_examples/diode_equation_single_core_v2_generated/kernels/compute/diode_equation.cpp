@@ -9,7 +9,7 @@
 namespace NAMESPACE {
 void MAIN {
     // Compile time args
-    constexpr uint32_t src_cb_index = get_compile_time_arg_val(0);
+    constexpr uint32_t v_cb_index = get_compile_time_arg_val(0);
     constexpr uint32_t vj_cb_index = get_compile_time_arg_val(1);
     constexpr uint32_t isat_cb_index = get_compile_time_arg_val(2);
     constexpr uint32_t ones_cb_index = get_compile_time_arg_val(3);
@@ -19,7 +19,7 @@ void MAIN {
     constexpr uint32_t one_tile = 1;
 
     // Initialize the SFPU
-    init_sfpu(src_cb_index, result_cb_index);
+    init_sfpu(v_cb_index, result_cb_index);
 
     // Wait for the SFPU to have registers available for us to use during
     // the computation.
@@ -27,11 +27,11 @@ void MAIN {
 
     // Wait for data to show up in the circular buffer and copy it from
     // the circular buffer to registers so the SFPU can use it.
-    cb_wait_front(src_cb_index, one_tile);
+    cb_wait_front(v_cb_index, one_tile);
     cb_wait_front(vj_cb_index, one_tile);
     cb_wait_front(isat_cb_index, one_tile);
     cb_wait_front(ones_cb_index, one_tile);
-    copy_tile(src_cb_index, /*offset*/ 0, /*register_offset*/ 0);
+    copy_tile(v_cb_index, /*offset*/ 0, /*register_offset*/ 0);
     copy_tile(vj_cb_index, /*offset*/ 0, /*register_offset*/ 1);
     copy_tile(isat_cb_index, /*offset*/ 0, /*register_offset*/ 2);
     copy_tile(ones_cb_index, /*offset*/ 0, /*register_offset*/ 3);
@@ -39,18 +39,21 @@ void MAIN {
     //
     // Fused operations
     //
-    // Compute the diode current using the SFPU.
+    // Compute the division of V by vj using the SFPU.
     div_binary_tile_init();
     div_binary_tile(0, 1, 4);  // V/vj
 
+    // Compute the exponentiation of the result using the SFPU.
     exp_tile_init();
     exp_tile(4);  // exp(V/vj)
 
+    // Subtract 1 from the result using the SFPU.
     sub_binary_tile_init();
-    sub_binary_tile(4, 3, 5);  // exp(V/vj) - 1
+    sub_binary_tile(4, 3, 4);  // exp(V/vj) - 1
 
+    // Multiply the result by isat using the SFPU.
     mul_binary_tile_init();
-    mul_binary_tile(5, 2, 0);  // isat * (exp(V/vj) - 1)
+    mul_binary_tile(4, 2, 0);  // isat * (exp(V/vj) - 1)
 
     // Wait for result to be done and data stored back to the circular buffer
     tile_regs_commit();
@@ -62,7 +65,7 @@ void MAIN {
     pack_tile(0, result_cb_index);  // copy tile 0 from the registers to the CB
 
     // We don't need the input tile anymore, mark it as consumed
-    cb_pop_front(src_cb_index, one_tile);
+    cb_pop_front(v_cb_index, one_tile);
     cb_pop_front(vj_cb_index, one_tile);
     cb_pop_front(isat_cb_index, one_tile);
     cb_pop_front(ones_cb_index, one_tile);

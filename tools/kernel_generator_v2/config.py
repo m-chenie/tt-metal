@@ -74,11 +74,13 @@ OPERATIONS = {
         "compute_kernel": "diode_equation.cpp",
         "operation_type": "sfpu_chain",
         "inputs": ["V", "Vj", "Isat"],
-        "variable_inputs": ["V"],  # Read from DRAM
-        "constant_inputs": {  # Initialize in reader kernel using float_to_bfloat16
+        "variable_inputs": ["V", "Vj", "Isat"],  # All read from DRAM
+        "constant_inputs": {  # Only generic constants initialized in reader kernel
+            "ones": 1.0,  # For subtraction (... - 1)
+        },
+        "constant_values": {  # Values for host code to create DRAM buffers
             "Vj": 1.0,
             "Isat": 0.026,
-            "ones": 1.0,  # For subtraction (... - 1)
         },
         "formula": "I = isat × (exp(V/vj) - 1)",
         "mathematical_steps": "divide V by vj, exponentiate result, subtract 1, multiply by isat",
