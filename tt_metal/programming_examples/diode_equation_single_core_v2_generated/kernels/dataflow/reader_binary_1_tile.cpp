@@ -5,6 +5,22 @@
 #include <cstdint>
 #include <cstring>
 
+/**
+ * @brief Converts a 32-bit IEEE 754 float to 16-bit bfloat16 format.
+ *
+ * This function performs a simple truncation conversion from float32 to bfloat16
+ * by extracting the upper 16 bits (sign, exponent, and upper 7 bits of mantissa)
+ * of the IEEE 754 float representation. The lower 16 bits of the mantissa are
+ * discarded, which may result in precision loss but maintains the same range
+ * as float32.
+ *
+ * @param value The input 32-bit floating point value to convert
+ * @return uint16_t The resulting 16-bit bfloat16 value in its binary representation
+ *
+ * @note This implementation uses simple truncation without rounding, which may
+ *       introduce quantization errors for values that cannot be exactly
+ *       represented in bfloat16 format - it is sufficient for this example.
+ */
 inline uint16_t float_to_bfloat16(float value) {
     uint32_t tmp;
     std::memcpy(&tmp, &value, sizeof(tmp));
@@ -17,7 +33,9 @@ void kernel_main() {
 
     // Compile time args
     constexpr uint32_t src_cb_index = get_compile_time_arg_val(0);
-    constexpr uint32_t constants_cb_index = get_compile_time_arg_val(1);
+    constexpr uint32_t vj_cb_index = get_compile_time_arg_val(1);
+    constexpr uint32_t isat_cb_index = get_compile_time_arg_val(2);
+    constexpr uint32_t ones_cb_index = get_compile_time_arg_val(3);
 
     // Input data config
     const uint32_t input_data_tile_size_bytes = get_tile_size(src_cb_index);
@@ -27,7 +45,6 @@ void kernel_main() {
 
     // Constants
     constexpr uint32_t one_tile = 1;
-    constexpr uint32_t three_tiles = 3;
 
     // Read input value data
     cb_reserve_back(src_cb_index, one_tile);
@@ -37,13 +54,27 @@ void kernel_main() {
     cb_push_back(src_cb_index, one_tile);
 
     // Create tile with constants
-    cb_reserve_back(constants_cb_index, three_tiles);
-    const uint32_t constants_l1_write_addr = get_write_ptr(constants_cb_index);
-    volatile tt_l1_ptr uint16_t* ptr = reinterpret_cast<volatile tt_l1_ptr uint16_t*>(constants_l1_write_addr);
+    cb_reserve_back(vj_cb_index, one_tile);
+    const uint32_t vj_l1_write_addr = get_write_ptr(vj_cb_index);
+    volatile tt_l1_ptr uint16_t* vj_ptr = reinterpret_cast<volatile tt_l1_ptr uint16_t*>(vj_l1_write_addr);
     for (uint32_t i = 0; i < tt::constants::TILE_HW; i++) {
-        ptr[i] = float_to_bfloat16(1.0f);                               // Vj
-        ptr[i + tt::constants::TILE_HW] = float_to_bfloat16(0.026f);    // Isat
-        ptr[i + 2 * tt::constants::TILE_HW] = float_to_bfloat16(1.0f);  // ones
+        vj_ptr[i] = float_to_bfloat16(1.0f);
     }
-    cb_push_back(constants_cb_index, three_tiles);
+    cb_push_back(vj_cb_index, one_tile);
+
+    cb_reserve_back(isat_cb_index, one_tile);
+    const uint32_t isat_l1_write_addr = get_write_ptr(isat_cb_index);
+    volatile tt_l1_ptr uint16_t* isat_ptr = reinterpret_cast<volatile tt_l1_ptr uint16_t*>(isat_l1_write_addr);
+    for (uint32_t i = 0; i < tt::constants::TILE_HW; i++) {
+        isat_ptr[i] = float_to_bfloat16(0.026f);
+    }
+    cb_push_back(isat_cb_index, one_tile);
+
+    cb_reserve_back(ones_cb_index, one_tile);
+    const uint32_t ones_l1_write_addr = get_write_ptr(ones_cb_index);
+    volatile tt_l1_ptr uint16_t* ones_ptr = reinterpret_cast<volatile tt_l1_ptr uint16_t*>(ones_l1_write_addr);
+    for (uint32_t i = 0; i < tt::constants::TILE_HW; i++) {
+        ones_ptr[i] = float_to_bfloat16(1.0f);
+    }
+    cb_push_back(ones_cb_index, one_tile);
 }

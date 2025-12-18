@@ -80,11 +80,6 @@ OPERATIONS = {
             "Isat": 0.026,
             "ones": 1.0,  # For subtraction (... - 1)
         },
-        "circular_buffers": {
-            "CB_0": {"description": "V (variable input from DRAM)", "num_tiles": 1},
-            "CB_1": {"description": "constants (Vj at tile 0, Isat at tile 1, ones at tile 2)", "num_tiles": 3},
-            "CB_2": {"description": "output result", "num_tiles": 1},
-        },
         "formula": "I = isat × (exp(V/vj) - 1)",
         "mathematical_steps": "divide V by vj, exponentiate result, subtract 1, multiply by isat",
         "required_compute_functions": [
@@ -129,6 +124,46 @@ CANONICAL_EXAMPLES = {
         "host": "tt_metal/programming_examples/matmul/matmul_single_core/matmul_single_core.cpp",
     },
 }
+
+
+# Helper function to generate circular buffer layout dynamically
+def generate_circular_buffer_layout(op_cfg: dict) -> dict:
+    """
+    Dynamically generate circular buffer layout for an operation.
+    Creates one circular buffer per input (variable or constant) + one output buffer.
+
+    Args:
+        op_cfg: Operation configuration dict from OPERATIONS
+
+    Returns:
+        Dict mapping CB_N to buffer description with num_tiles
+    """
+    cb_layout = {}
+    cb_index = 0
+
+    # Add circular buffers for variable inputs (from DRAM)
+    variable_inputs = op_cfg.get("variable_inputs", [])
+    for var_input in variable_inputs:
+        cb_id = f"CB_{cb_index}"
+        cb_layout[cb_id] = {"description": f"{var_input} (variable input from DRAM)", "num_tiles": 1}
+        cb_index += 1
+
+    # Add circular buffers for constant inputs (one CB per constant)
+    constant_inputs = op_cfg.get("constant_inputs", {})
+    for const_name, const_val in constant_inputs.items():
+        cb_id = f"CB_{cb_index}"
+        cb_layout[cb_id] = {
+            "description": f"{const_name} (constant = {const_val}, initialized in reader kernel)",
+            "num_tiles": 1,
+        }
+        cb_index += 1
+
+    # Add output circular buffer
+    output_cb_id = f"CB_{cb_index}"
+    cb_layout[output_cb_id] = {"description": "output result", "num_tiles": 1}
+
+    return cb_layout
+
 
 # Fallback CMakeLists.txt template if LLM generation fails
 CMAKELISTS_TEMPLATE = """cmake_minimum_required(VERSION 3.22...3.30)

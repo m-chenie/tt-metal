@@ -1,6 +1,6 @@
 from typing import List, Dict
 
-from config import OPERATIONS, CORE_MODES
+from config import OPERATIONS, CORE_MODES, generate_circular_buffer_layout
 from api_retriever import retrieve_api_signatures, format_api_section
 
 
@@ -42,7 +42,9 @@ def build_system_prompt(op: str, core_mode: str, retrieved: List[Dict]) -> str:
         # Add explicit input/constant specification if available
         variable_inputs = op_cfg.get("variable_inputs", [])
         constant_inputs = op_cfg.get("constant_inputs", {})
-        cb_layout = op_cfg.get("circular_buffers", {})
+
+        # Generate circular buffer layout dynamically
+        cb_layout = generate_circular_buffer_layout(op_cfg)
 
         if variable_inputs or constant_inputs:
             parts.append("")
@@ -59,8 +61,10 @@ def build_system_prompt(op: str, core_mode: str, retrieved: List[Dict]) -> str:
             if cb_layout:
                 parts.append("")
                 parts.append("CIRCULAR BUFFER LAYOUT (create all CB in host code):")
-                for cb_id, cb_desc in cb_layout.items():
-                    parts.append(f"- {cb_id}: {cb_desc}")
+                for cb_id, cb_info in cb_layout.items():
+                    desc = cb_info.get("description", "")
+                    num_tiles = cb_info.get("num_tiles", 1)
+                    parts.append(f"- {cb_id}: {desc} [{num_tiles} tile(s)]")
 
         parts.append("")
 
@@ -148,21 +152,17 @@ def build_kernel_user_prompt(op: str, core_mode: str) -> str:
         math_steps = op_cfg.get("mathematical_steps", "")
         variable_inputs = op_cfg.get("variable_inputs", [])
         constant_inputs = op_cfg.get("constant_inputs", {})
-        cb_layout = op_cfg.get("circular_buffers", {})
 
-        # Build circular buffer description from config
-        if cb_layout:
-            cb_lines = ["Circular buffer layout (MUST follow exactly):"]
-            for cb_id, cb_info in cb_layout.items():
-                if isinstance(cb_info, dict):
-                    desc = cb_info.get("description", "")
-                    num_tiles = cb_info.get("num_tiles", 1)
-                    cb_lines.append(f"  * {cb_id}: {desc} [{num_tiles} tile(s)]")
-                else:
-                    cb_lines.append(f"  * {cb_id}: {cb_info}")
-            cb_desc = "\n".join(cb_lines)
-        else:
-            cb_desc = "Use standard circular buffer layout: CB_0/CB_1 for inputs, CB_16 for output"
+        # Generate circular buffer layout dynamically
+        cb_layout = generate_circular_buffer_layout(op_cfg)
+
+        # Build circular buffer description from dynamically generated layout
+        cb_lines = ["Circular buffer layout (MUST follow exactly):"]
+        for cb_id, cb_info in cb_layout.items():
+            desc = cb_info.get("description", "")
+            num_tiles = cb_info.get("num_tiles", 1)
+            cb_lines.append(f"  * {cb_id}: {desc} [{num_tiles} tile(s)]")
+        cb_desc = "\n".join(cb_lines)
 
         # Build reader description with explicit tile semantics
         if variable_inputs and constant_inputs:
@@ -283,18 +283,19 @@ def build_host_user_prompt(op: str, core_mode: str) -> str:
     # Build CB configuration hint based on operation type
     cb_requirements = ""
     if op_type == "sfpu_chain":
-        cb_layout = op_cfg.get("circular_buffers", {})
         variable_inputs = op_cfg.get("variable_inputs", [])
         constant_inputs = op_cfg.get("constant_inputs", {})
+
+        # Generate circular buffer layout dynamically
+        cb_layout = generate_circular_buffer_layout(op_cfg)
 
         if cb_layout:
             cb_req_lines = ["- CRITICAL: Allocate ALL circular buffers in host code using CreateCircularBuffer():"]
             for cb_id, cb_info in cb_layout.items():
-                if isinstance(cb_info, dict):
-                    desc = cb_info.get("description", "")
-                    num_tiles = cb_info.get("num_tiles", 1)
-                    size_expr = f"{num_tiles} * single_tile_size" if num_tiles > 1 else "single_tile_size"
-                    cb_req_lines.append(f"  * {cb_id}: size={size_expr} bytes, format=Float16_b")
+                desc = cb_info.get("description", "")
+                num_tiles = cb_info.get("num_tiles", 1)
+                size_expr = f"{num_tiles} * single_tile_size" if num_tiles > 1 else "single_tile_size"
+                cb_req_lines.append(f"  * {cb_id}: size={size_expr} bytes, format=Float16_b")
             cb_req_lines.append("- DO NOT create DRAM buffers for constants or initialize constant data in host code")
             cb_req_lines.append("- Constants will be initialized directly in L1 by the reader kernel")
             if variable_inputs:

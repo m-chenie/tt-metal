@@ -52,11 +52,15 @@ INPUT CONFIGURATION:
 
 CIRCULAR BUFFER LAYOUT (create all CB in host code):
 
-- CB_0: {'description': 'V (variable input from DRAM)', 'num_tiles': 1}
+- CB_0: V (variable input from DRAM) [1 tile(s)]
 
-- CB_1: {'description': 'constants (Vj at tile 0, Isat at tile 1, ones at tile 2)', 'num_tiles': 3}
+- CB_1: Vj (constant = 1.0, initialized in reader kernel) [1 tile(s)]
 
-- CB_2: {'description': 'output result', 'num_tiles': 1}
+- CB_2: Isat (constant = 0.026, initialized in reader kernel) [1 tile(s)]
+
+- CB_3: ones (constant = 1.0, initialized in reader kernel) [1 tile(s)]
+
+- CB_4: output result [1 tile(s)]
 
 
 
@@ -560,8 +564,10 @@ Requirements:
 - Label each block clearly: COMPUTE, READER, WRITER
 - Circular buffer layout (MUST follow exactly):
   * CB_0: V (variable input from DRAM) [1 tile(s)]
-  * CB_1: constants (Vj at tile 0, Isat at tile 1, ones at tile 2) [3 tile(s)]
-  * CB_2: output result [1 tile(s)]
+  * CB_1: Vj (constant = 1.0, initialized in reader kernel) [1 tile(s)]
+  * CB_2: Isat (constant = 0.026, initialized in reader kernel) [1 tile(s)]
+  * CB_3: ones (constant = 1.0, initialized in reader kernel) [1 tile(s)]
+  * CB_4: output result [1 tile(s)]
 - Compute kernel: Implement the formula: I = isat × (exp(V/vj) - 1). Mathematical steps: divide V by vj, exponentiate result, subtract 1, multiply by isat. DO NOT initialize constants in compute kernel. REMINDER: cb_wait_front/cb_pop_front count must match the number of tiles in the CB (e.g., if CB has 3 tiles, use cb_wait_front(cb_id, 3) and cb_pop_front(cb_id, 3)). Use appropriate SFPU operations from the examples. Follow the pattern: initialize operations, wait for inputs, acquire registers, perform computation, pack result, release registers
 - Reader kernel: Read V from DRAM into CB_0. Initialize constant tiles in reader kernel using float_to_bfloat16 pattern:   * Vj = 1.0 (in appropriate CB as specified above)   * Isat = 0.026 (in appropriate CB as specified above)   * ones = 1.0 (in appropriate CB as specified above)
 REMINDER: When writing N tiles to a CB:   - Each tile is TILE_HW elements (1024 for 32x32)   - Write tile 0 at ptr[0..TILE_HW-1], tile 1 at ptr[TILE_HW..2*TILE_HW-1], etc.   - Call cb_reserve_back(cb_id, N) and cb_push_back(cb_id, N) to reserve/push N tiles. Use noc_async_read with barriers
@@ -1091,8 +1097,10 @@ Requirements:
 - Create DRAM buffers using `distributed::MeshBuffer::create()`
 - CRITICAL: Allocate ALL circular buffers in host code using CreateCircularBuffer():
   * CB_0: size=single_tile_size bytes, format=Float16_b
-  * CB_1: size=3 * single_tile_size bytes, format=Float16_b
+  * CB_1: size=single_tile_size bytes, format=Float16_b
   * CB_2: size=single_tile_size bytes, format=Float16_b
+  * CB_3: size=single_tile_size bytes, format=Float16_b
+  * CB_4: size=single_tile_size bytes, format=Float16_b
 - DO NOT create DRAM buffers for constants or initialize constant data in host code
 - Constants will be initialized directly in L1 by the reader kernel
 - ONLY create DRAM buffer for variable input: V
